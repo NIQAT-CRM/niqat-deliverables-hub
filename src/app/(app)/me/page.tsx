@@ -128,7 +128,7 @@ export default async function MePage() {
   const me = await requireUser();
   const supabase = await createClient();
 
-  const [{ data: profile }, { data: files }] = await Promise.all([
+  const [{ data: profile }, { data: files }, { data: feedback }] = await Promise.all([
     supabase
       .from("profiles")
       .select("bio, contact_links, experience, certificates, status")
@@ -139,6 +139,12 @@ export default async function MePage() {
       .select("id, name, size, uploaded_at")
       .eq("owner_id", me.id)
       .order("uploaded_at", { ascending: false }),
+    supabase
+      .from("feedback")
+      .select("id, content, created_at")
+      .eq("lecturer_id", me.id)
+      .eq("is_master", false)
+      .order("created_at", { ascending: false }),
   ]);
 
   const status = (profile?.status ?? "draft") as ProfileStatus;
@@ -147,6 +153,11 @@ export default async function MePage() {
   const experience = asExperience(profile?.experience);
   const certificates = asCertificates(profile?.certificates);
   const fileRows = (files ?? []) as FileRow[];
+  const feedbackRows = (feedback ?? []) as {
+    id: string;
+    content: string | null;
+    created_at: string;
+  }[];
 
   return (
     <div className="mx-auto max-w-2xl space-y-8">
@@ -231,6 +242,29 @@ export default async function MePage() {
               </tbody>
             </table>
           </div>
+        )}
+      </section>
+
+      <section className="space-y-4">
+        <div>
+          <h2 className="text-lg font-bold text-ink">My feedback</h2>
+          <p className="mt-1 text-sm text-muted">Feedback shared with you by the team.</p>
+        </div>
+        {feedbackRows.length === 0 ? (
+          <div className="rounded-card border border-line bg-card p-8 text-center shadow-card">
+            <p className="text-sm text-muted">No feedback yet.</p>
+          </div>
+        ) : (
+          <ul className="space-y-3">
+            {feedbackRows.map((f) => (
+              <li key={f.id} className="rounded-card border border-line bg-card p-5 shadow-card">
+                <p className="whitespace-pre-wrap text-sm text-ink">{f.content}</p>
+                <p className="mt-2 text-xs text-faint">
+                  {new Date(f.created_at).toLocaleDateString()}
+                </p>
+              </li>
+            ))}
+          </ul>
         )}
       </section>
     </div>

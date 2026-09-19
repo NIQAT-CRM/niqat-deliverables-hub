@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import { notifyAdmins } from "@/lib/notify";
 
 const BUCKET = "lecturer-files";
 
@@ -29,6 +30,7 @@ export async function recordFile(input: {
   });
 
   if (error) return { error: "Could not save the file record." };
+  await notifyAdmins("file_uploaded", user.id);
   revalidatePath("/me");
   return { error: null };
 }

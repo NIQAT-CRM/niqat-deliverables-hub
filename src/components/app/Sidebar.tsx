@@ -14,31 +14,57 @@ const ROLE_LABEL: Record<UserRole, string> = {
   lecturer: "Lecturer",
 };
 
-type NavItem = { href: string; label: string; icon: React.ReactNode };
+const I = {
+  dashboard: "M3 3h8v8H3V3zm10 0h8v5h-8V3zM3 13h8v8H3v-8zm10 3h8v5h-8v-5z",
+  users: "M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2 M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8 M23 21v-2a4 4 0 0 0-3-3.87 M16 3.13a4 4 0 0 1 0 7.75",
+  groups: "M12 2 2 7l10 5 10-5-10-5z M2 17l10 5 10-5 M2 12l10 5 10-5",
+  feedback: "M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z",
+  bell: "M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9 M13.73 21a2 2 0 0 1-3.46 0",
+  audit: "M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z M14 2v6h6 M16 13H8 M16 17H8 M10 9H8",
+  user: "M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2 M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8",
+  logout: "M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4 M16 17l5-5-5-5 M21 12H9",
+};
 
-const iconUsers = (
-  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="h-[18px] w-[18px]">
-    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M23 21v-2a4 4 0 0 0-3-3.87" /><path d="M16 3.13a4 4 0 0 1 0 7.75" />
-  </svg>
-);
-const iconUser = (
-  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="h-[18px] w-[18px]">
-    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" />
-  </svg>
-);
-const iconLogout = (
-  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="h-[18px] w-[18px]">
-    <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" /><polyline points="16 17 21 12 16 7" /><line x1="21" y1="12" x2="9" y2="12" />
-  </svg>
-);
+function Icon({ d }: { d: string }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.7"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className="h-[18px] w-[18px] shrink-0"
+    >
+      {d.split(" M").map((seg, i) => (
+        <path key={i} d={(i === 0 ? seg : "M" + seg)} />
+      ))}
+    </svg>
+  );
+}
 
-export function Sidebar({ user }: { user: CurrentUser }) {
+type NavItem = { href: string; label: string; icon: keyof typeof I; badge?: number };
+
+export function Sidebar({
+  user,
+  unread = 0,
+}: {
+  user: CurrentUser;
+  unread?: number;
+}) {
   const pathname = usePathname();
   const staff = isStaff(user.role);
 
   const nav: NavItem[] = staff
-    ? [{ href: "/admin", label: "Lecturers", icon: iconUsers }]
-    : [{ href: "/me", label: "My Profile", icon: iconUser }];
+    ? [
+        { href: "/admin", label: "Dashboard", icon: "dashboard" },
+        { href: "/admin/lecturers", label: "Lecturers", icon: "users" },
+        { href: "/admin/groups", label: "Groups", icon: "groups" },
+        { href: "/admin/feedback", label: "Feedback", icon: "feedback" },
+        { href: "/admin/notifications", label: "Notifications", icon: "bell", badge: unread },
+        { href: "/admin/audit", label: "Audit log", icon: "audit" },
+      ]
+    : [{ href: "/me", label: "My Profile", icon: "user" }];
 
   const initials = (user.fullName || user.email || "?")
     .split(" ")
@@ -48,23 +74,21 @@ export function Sidebar({ user }: { user: CurrentUser }) {
     .join("")
     .toUpperCase();
 
+  function isActive(href: string) {
+    if (href === "/admin") return pathname === "/admin";
+    return pathname === href || pathname.startsWith(href + "/");
+  }
+
   return (
     <aside className="fixed inset-y-0 left-0 z-20 flex w-60 flex-col bg-sidebar text-white/80">
       <div className="flex items-center gap-2.5 px-5 py-5">
-        <Image
-          src="/niqat-icon.png"
-          alt=""
-          width={30}
-          height={30}
-          className="rounded-md"
-        />
+        <Image src="/niqat-icon.png" alt="" width={30} height={30} className="rounded-md" />
         <span className="text-[17px] font-extrabold tracking-tight text-white">Niqat</span>
       </div>
 
       <nav className="mt-2 flex-1 space-y-1 px-3">
         {nav.map((item) => {
-          const active =
-            pathname === item.href || pathname.startsWith(item.href + "/");
+          const active = isActive(item.href);
           return (
             <Link
               key={item.href}
@@ -75,8 +99,13 @@ export function Sidebar({ user }: { user: CurrentUser }) {
                   : "text-white/70 hover:bg-white/5 hover:text-white"
               }`}
             >
-              {item.icon}
-              {item.label}
+              <Icon d={I[item.icon]} />
+              <span className="flex-1">{item.label}</span>
+              {item.badge ? (
+                <span className="rounded-full bg-niqat px-1.5 py-0.5 text-[11px] font-bold text-white">
+                  {item.badge}
+                </span>
+              ) : null}
             </Link>
           );
         })}
@@ -99,7 +128,7 @@ export function Sidebar({ user }: { user: CurrentUser }) {
             type="submit"
             className="mt-1 flex w-full items-center gap-3 rounded-control px-3 py-2.5 text-sm font-medium text-white/70 transition-colors hover:bg-white/5 hover:text-white"
           >
-            {iconLogout}
+            <Icon d={I.logout} />
             Sign out
           </button>
         </form>

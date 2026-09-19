@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import { notifyAdmins } from "@/lib/notify";
 
 export type SaveState = { ok: boolean; error: string | null };
 
@@ -103,6 +104,7 @@ export async function requestEdit(): Promise<SaveState> {
 
   if (error) return { ok: false, error: friendly(error.message) };
 
+  await notifyAdmins("edit_requested", user.id);
   revalidatePath("/me");
   return { ok: true, error: null };
 }

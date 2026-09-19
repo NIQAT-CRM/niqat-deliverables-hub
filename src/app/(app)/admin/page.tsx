@@ -1,108 +1,100 @@
 import Link from "next/link";
 import { requireUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
-import { Button } from "@/components/ui/Button";
-import { ReopenButton } from "@/components/app/ReopenButton";
-import type { ProfileStatus } from "@/lib/types";
-import { StatusBadge } from "@/components/ui/StatusBadge";
 
 export const dynamic = "force-dynamic";
 
-type LecturerRow = {
-  id: string;
-  full_name: string | null;
-  email: string;
-  created_at: string;
-  profiles: { status: ProfileStatus }[] | { status: ProfileStatus } | null;
+const EVENT_LABEL: Record<string, string> = {
+  file_uploaded: "New file uploaded",
+  edit_requested: "Profile edit requested",
+  profile_reopened: "Profile reopened",
 };
 
-function statusOf(row: LecturerRow): ProfileStatus | null {
-  const p = row.profiles;
-  if (!p) return null;
-  return Array.isArray(p) ? p[0]?.status ?? null : p.status;
+function timeAgo(iso: string): string {
+  const diff = Date.now() - new Date(iso).getTime();
+  const m = Math.floor(diff / 60000);
+  if (m < 1) return "just now";
+  if (m < 60) return `${m}m ago`;
+  const h = Math.floor(m / 60);
+  if (h < 24) return `${h}h ago`;
+  return `${Math.floor(h / 24)}d ago`;
 }
 
-export default async function AdminLecturers() {
+function StatCard({ label, value, href }: { label: string; value: number; href?: string }) {
+  const inner = (
+    <div className="rounded-card border border-line bg-card p-5 shadow-card transition-colors hover:border-niqat/40">
+      <p className="text-3xl font-extrabold text-ink">{value}</p>
+      <p className="mt-1 text-sm text-muted">{label}</p>
+    </div>
+  );
+  return href ? <Link href={href}>{inner}</Link> : inner;
+}
+
+export default async function AdminDashboard() {
   const me = await requireUser();
   const supabase = await createClient();
-  const { data } = await supabase
-    .from("users")
-    .select("id, full_name, email, created_at, profiles(status)")
-    .eq("role", "lecturer")
-    .order("created_at", { ascending: false });
 
-  const rows = (data ?? []) as unknown as LecturerRow[];
-  const isAdmin = me.role === "admin";
+  const [lecturers, programs, groups, editReq, notifs] = await Promise.all([
+    supabase.from("users").select("id", { count: "exact", head: true }).eq("role", "lecturer"),
+    supabase.from("programs").select("id", { count: "exact", head: true }),
+    supabase.from("groups").select("id", { count: "exact", head: true }),
+    supabase.from("profiles").select("id", { count: "exact", head: true }).eq("status", "edit_requested"),
+    supabase
+      .from("notifications")
+      .select("id, event_type, ref_id, read, created_at")
+      .eq("recipient_id", me.id)
+      .order("created_at", { ascending: false })
+      .limit(8),
+  ]);
+
+  const activity = (notifs.data ?? []) as {
+    id: string;
+    event_type: string;
+    ref_id: string | null;
+    read: boolean;
+    created_at: string;
+  }[];
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between gap-4">
-        <div>
-          <h1 className="text-xl font-bold text-ink">Lecturers</h1>
-          <p className="mt-1 text-sm text-muted">
-            {rows.length} {rows.length === 1 ? "lecturer" : "lecturers"}
-          </p>
-        </div>
-        {isAdmin && (
-          <div className="flex items-center gap-2">
-            <Link href="/admin/lecturers/import">
-              <Button variant="secondary">Import CSV</Button>
-            </Link>
-            <Link href="/admin/lecturers/new">
-              <Button>Add lecturer</Button>
-            </Link>
-          </div>
-        )}
+    <div className="space-y-8">
+      <div>
+        <h1 className="text-2xl font-extrabold text-ink">Dashboard</h1>
+        <p className="mt-1 text-sm text-muted">Welcome back, {me.fullName || me.email}.</p>
       </div>
 
-      {rows.length === 0 ? (
-        <div className="rounded-card border border-line bg-white p-10 text-center shadow-card">
-          <p className="text-sm text-muted">
-            No lecturers yet.{isAdmin ? " Add your first one to get started." : ""}
-          </p>
-          {isAdmin && (
-            <Link href="/admin/lecturers/new" className="mt-4 inline-block">
-              <Button>Add lecturer</Button>
-            </Link>
-          )}
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <StatCard label="Lecturers" value={lecturers.count ?? 0} href="/admin/lecturers" />
+        <StatCard label="Programs" value={programs.count ?? 0} href="/admin/groups" />
+        <StatCard label="Groups" value={groups.count ?? 0} href="/admin/groups" />
+        <StatCard label="Edit requests" value={editReq.count ?? 0} href="/admin/lecturers" />
+      </div>
+
+      <div className="rounded-card border border-line bg-card shadow-card">
+        <div className="flex items-center justify-between border-b border-line px-5 py-4">
+          <h2 className="font-bold text-ink">Recent activity</h2>
+          <Link href="/admin/notifications" className="text-sm font-medium text-niqat hover:text-niqat-hover">
+            View all
+          </Link>
         </div>
-      ) : (
-        <div className="overflow-hidden rounded-card border border-line bg-white shadow-card">
-          <table className="w-full text-left text-sm">
-            <thead className="border-b border-line text-muted">
-              <tr>
-                <th className="px-4 py-3 font-medium">Name</th>
-                <th className="px-4 py-3 font-medium">Email</th>
-                <th className="px-4 py-3 font-medium">Profile</th>
-                {isAdmin && <th className="px-4 py-3 text-right font-medium">Actions</th>}
-              </tr>
-            </thead>
-            <tbody>
-              {rows.map((row) => {
-                const status = statusOf(row);
-                const canReopen =
-                  isAdmin && (status === "locked" || status === "edit_requested");
-                return (
-                  <tr key={row.id} className="border-b border-line last:border-0">
-                    <td className="px-4 py-3 font-medium text-ink">
-                      {row.full_name || "—"}
-                    </td>
-                    <td className="px-4 py-3 text-muted">{row.email}</td>
-                    <td className="px-4 py-3">
-                      <StatusBadge status={status} />
-                    </td>
-                    {isAdmin && (
-                      <td className="px-4 py-3 text-right">
-                        {canReopen ? <ReopenButton lecturerId={row.id} /> : null}
-                      </td>
-                    )}
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-      )}
+        {activity.length === 0 ? (
+          <p className="px-5 py-8 text-center text-sm text-muted">No activity yet.</p>
+        ) : (
+          <ul>
+            {activity.map((a) => (
+              <li
+                key={a.id}
+                className="flex items-center justify-between gap-4 border-b border-line2 px-5 py-3 last:border-0"
+              >
+                <span className="flex items-center gap-2 text-sm text-ink">
+                  {!a.read && <span className="h-2 w-2 rounded-full bg-niqat" />}
+                  {EVENT_LABEL[a.event_type] ?? a.event_type}
+                </span>
+                <span className="text-xs text-faint">{timeAgo(a.created_at)}</span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
     </div>
   );
 }

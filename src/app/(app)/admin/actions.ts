@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { getCurrentUser } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
+import { notifyUser } from "@/lib/notify";
 
 export type ProvisionState = { error: string | null };
 
@@ -61,7 +62,9 @@ export async function reopenProfile(
     .update({ status: "draft" })
     .eq("user_id", lecturerId);
   if (error) return { error: "Could not reopen the profile." };
+  await notifyUser(lecturerId, "profile_reopened", lecturerId);
   revalidatePath("/admin");
+  revalidatePath(`/admin/lecturers/${lecturerId}`);
   return { error: null };
 }
 
