@@ -8,41 +8,61 @@ import type { ProfileStatus } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
 
-type LecturerRow = {
+type ProfileEmbed = { status: ProfileStatus; avatar_url: string | null };
+type Row = {
   id: string;
   full_name: string | null;
   email: string;
-  created_at: string;
-  profiles: { status: ProfileStatus }[] | { status: ProfileStatus } | null;
+  profiles: ProfileEmbed[] | ProfileEmbed | null;
 };
 
-function statusOf(row: LecturerRow): ProfileStatus | null {
+function embed(row: Row): ProfileEmbed | null {
   const p = row.profiles;
   if (!p) return null;
-  return Array.isArray(p) ? p[0]?.status ?? null : p.status;
+  return Array.isArray(p) ? p[0] ?? null : p;
 }
 
 function initials(name: string) {
-  return name
-    .split(" ")
-    .map((p) => p[0])
-    .filter(Boolean)
-    .slice(0, 2)
-    .join("")
-    .toUpperCase();
+  return name.split(" ").map((p) => p[0]).filter(Boolean).slice(0, 2).join("").toUpperCase();
 }
 
 export default async function AdminLecturers() {
   const me = await requireUser();
-  const supabase = await createClient();
-  const { data } = await supabase
-    .from("users")
-    .select("id, full_name, email, created_at, profiles(status)")
-    .eq("role", "lecturer")
-    .order("created_at", { ascending: false });
-
-  const rows = (data ?? []) as unknown as LecturerRow[];
   const isAdmin = me.role === "admin";
+  const supabase = await createClient();
+
+  const [{ data }, { data: lp }] = await Promise.all([
+    supabase
+      .from("users")
+      .select("id, full_name, email, profiles(status, avatar_url)")
+      .eq("role", "lecturer")
+      .order("created_at", { ascending: false }),
+    supabase.from("lecturer_programs").select("lecturer_id, program:program_id(name)"),
+  ]);
+
+  const rows = (data ?? []) as unknown as Row[];
+
+  // programs per lecturer
+  const programsByLecturer: Record<string, string[]> = {};
+  for (const r of (lp ?? []) as Record<string, unknown>[]) {
+    const lid = r.lecturer_id as string;
+    const prog = Array.isArray(r.program) ? r.program[0] : r.program;
+    const name = (prog as { name?: string })?.name;
+    if (name) (programsByLecturer[lid] ||= []).push(name);
+  }
+
+  // signed avatar urls
+  const avatarByLecturer: Record<string, string> = {};
+  await Promise.all(
+    rows.map(async (r) => {
+      const path = embed(r)?.avatar_url;
+      if (!path) return;
+      const { data: signed } = await supabase.storage
+        .from("lecturer-files")
+        .createSignedUrl(path, 3600);
+      if (signed?.signedUrl) avatarByLecturer[r.id] = signed.signedUrl;
+    }),
+  );
 
   return (
     <div className="space-y-6">
@@ -67,60 +87,66 @@ export default async function AdminLecturers() {
 
       {rows.length === 0 ? (
         <div className="rounded-card border border-line bg-card p-10 text-center shadow-card">
-          <p className="text-sm text-muted">
-            No lecturers yet.{isAdmin ? " Add your first one to get started." : ""}
-          </p>
+          <p className="text-sm text-muted">No lecturers yet.</p>
         </div>
       ) : (
-        <div className="overflow-hidden rounded-card border border-line bg-card shadow-card">
-          <table className="w-full text-left text-sm">
-            <thead className="border-b border-line">
-              <tr className="text-[11px] uppercase tracking-wide text-faint">
-                <th className="px-5 py-3 font-semibold">Name</th>
-                <th className="px-5 py-3 font-semibold">Email</th>
-                <th className="px-5 py-3 font-semibold">Profile</th>
-                {isAdmin && <th className="px-5 py-3 text-right font-semibold">Actions</th>}
-              </tr>
-            </thead>
-            <tbody>
-              {rows.map((row) => {
-                const status = statusOf(row);
-                const canReopen =
-                  isAdmin && (status === "locked" || status === "edit_requested");
-                return (
-                  <tr key={row.id} className="border-b border-line2 last:border-0 hover:bg-ground/50">
-                    <td className="px-5 py-3">
-                      <Link href={`/admin/lecturers/${row.id}`} className="flex items-center gap-3">
-                        <span className="flex h-8 w-8 items-center justify-center rounded-md bg-niqat-soft text-xs font-bold text-niqat">
-                          {initials(row.full_name || row.email)}
-                        </span>
-                        <span className="font-semibold text-ink hover:text-niqat">
-                          {row.full_name || "—"}
-                        </span>
-                      </Link>
-                    </td>
-                    <td className="px-5 py-3 text-muted">{row.email}</td>
-                    <td className="px-5 py-3">
-                      <StatusBadge status={status} />
-                    </td>
-                    {isAdmin && (
-                      <td className="px-5 py-3">
-                        <div className="flex items-center justify-end gap-4">
-                          {canReopen && <ReopenButton lecturerId={row.id} />}
-                          <Link
-                            href={`/admin/lecturers/${row.id}`}
-                            className="text-sm font-medium text-niqat hover:text-niqat-hover"
-                          >
-                            View
-                          </Link>
-                        </div>
-                      </td>
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {rows.map((r) => {
+            const p = embed(r);
+            const status = p?.status ?? null;
+            const name = r.full_name || r.email;
+            const avatar = avatarByLecturer[r.id];
+            const teaching = programsByLecturer[r.id] ?? [];
+            const canReopen =
+              isAdmin && (status === "locked" || status === "edit_requested");
+            return (
+              <div
+                key={r.id}
+                className="flex flex-col rounded-card border border-line bg-card p-5 shadow-card transition-colors hover:border-niqat/40"
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex h-14 w-14 items-center justify-center overflow-hidden rounded-full bg-niqat-soft text-base font-bold text-niqat">
+                    {avatar ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={avatar} alt="" className="h-full w-full object-cover" />
+                    ) : (
+                      initials(name)
                     )}
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+                  </div>
+                  <StatusBadge status={status} />
+                </div>
+
+                <div className="mt-3">
+                  <Link
+                    href={`/admin/lecturers/${r.id}`}
+                    className="font-semibold text-ink hover:text-niqat"
+                  >
+                    {name}
+                  </Link>
+                  <p className="truncate text-sm text-muted">{r.email}</p>
+                </div>
+
+                <div className="mt-3 min-h-[36px]">
+                  <p className="text-[11px] font-semibold uppercase tracking-wide text-faint">
+                    Currently teaching
+                  </p>
+                  <p className="mt-0.5 text-sm text-ink">
+                    {teaching.length > 0 ? teaching.join(", ") : "—"}
+                  </p>
+                </div>
+
+                <div className="mt-4 flex items-center justify-between border-t border-line2 pt-3">
+                  <Link
+                    href={`/admin/lecturers/${r.id}`}
+                    className="text-sm font-medium text-niqat hover:text-niqat-hover"
+                  >
+                    View profile
+                  </Link>
+                  {canReopen && <ReopenButton lecturerId={r.id} />}
+                </div>
+              </div>
+            );
+          })}
         </div>
       )}
     </div>

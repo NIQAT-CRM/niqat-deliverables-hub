@@ -4,6 +4,7 @@ import { ProfileForm } from "@/components/app/ProfileForm";
 import { RequestEditButton } from "@/components/app/RequestEditButton";
 import { FileUploader } from "@/components/app/FileUploader";
 import { FileRowActions } from "@/components/app/FileRowActions";
+import { AvatarUploader } from "@/components/app/AvatarUploader";
 import type {
   ExperienceEntry,
   CertificateEntry,
@@ -131,7 +132,7 @@ export default async function MePage() {
   const [{ data: profile }, { data: files }, { data: feedback }] = await Promise.all([
     supabase
       .from("profiles")
-      .select("bio, contact_links, experience, certificates, status")
+      .select("bio, contact_links, experience, certificates, status, avatar_url")
       .eq("user_id", me.id)
       .maybeSingle(),
     supabase
@@ -152,6 +153,17 @@ export default async function MePage() {
   const links = (profile?.contact_links ?? {}) as Record<string, string>;
   const experience = asExperience(profile?.experience);
   const certificates = asCertificates(profile?.certificates);
+  const avatarPath = (profile?.avatar_url ?? null) as string | null;
+  let avatarUrl: string | null = null;
+  if (avatarPath) {
+    const { data: signed } = await supabase.storage
+      .from("lecturer-files")
+      .createSignedUrl(avatarPath, 3600);
+    avatarUrl = signed?.signedUrl ?? null;
+  }
+  const meInitials = (me.fullName || me.email || "?")
+    .split(" ").map((x) => x[0]).filter(Boolean).slice(0, 2).join("").toUpperCase();
+
   const fileRows = (files ?? []) as FileRow[];
   const feedbackRows = (feedback ?? []) as {
     id: string;
@@ -161,12 +173,13 @@ export default async function MePage() {
 
   return (
     <div className="mx-auto max-w-2xl space-y-8">
-      <div className="flex items-center justify-between gap-4">
-        <div>
-          <h1 className="text-xl font-bold text-ink">My profile</h1>
-          <p className="mt-1 text-sm text-muted">
-            Signed in as {me.fullName || me.email}
-          </p>
+      <div className="flex flex-wrap items-center justify-between gap-4">
+        <div className="flex items-center gap-4">
+          <AvatarUploader userId={me.id} currentUrl={avatarUrl} initials={meInitials} />
+          <div>
+            <h1 className="text-xl font-bold text-ink">{me.fullName || me.email}</h1>
+            <p className="mt-1 text-sm text-muted">My profile</p>
+          </div>
         </div>
         <StatusBadge status={status} />
       </div>
