@@ -2,6 +2,7 @@ import Link from "next/link";
 import { requireUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { Button } from "@/components/ui/Button";
+import { ReopenButton } from "@/components/app/ReopenButton";
 import type { ProfileStatus } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
@@ -36,7 +37,7 @@ export default async function AdminLecturers() {
     .order("created_at", { ascending: false });
 
   const rows = (data ?? []) as unknown as LecturerRow[];
-  const canAdd = me.role === "admin";
+  const isAdmin = me.role === "admin";
 
   return (
     <div className="space-y-6">
@@ -47,7 +48,7 @@ export default async function AdminLecturers() {
             {rows.length} {rows.length === 1 ? "lecturer" : "lecturers"}
           </p>
         </div>
-        {canAdd && (
+        {isAdmin && (
           <Link href="/admin/lecturers/new">
             <Button>Add lecturer</Button>
           </Link>
@@ -57,9 +58,9 @@ export default async function AdminLecturers() {
       {rows.length === 0 ? (
         <div className="rounded-card border border-line bg-white p-10 text-center shadow-card">
           <p className="text-sm text-muted">
-            No lecturers yet.{canAdd ? " Add your first one to get started." : ""}
+            No lecturers yet.{isAdmin ? " Add your first one to get started." : ""}
           </p>
-          {canAdd && (
+          {isAdmin && (
             <Link href="/admin/lecturers/new" className="mt-4 inline-block">
               <Button>Add lecturer</Button>
             </Link>
@@ -73,11 +74,14 @@ export default async function AdminLecturers() {
                 <th className="px-4 py-3 font-medium">Name</th>
                 <th className="px-4 py-3 font-medium">Email</th>
                 <th className="px-4 py-3 font-medium">Profile</th>
+                {isAdmin && <th className="px-4 py-3 text-right font-medium">Actions</th>}
               </tr>
             </thead>
             <tbody>
               {rows.map((row) => {
                 const status = statusOf(row);
+                const canReopen =
+                  isAdmin && (status === "locked" || status === "edit_requested");
                 return (
                   <tr key={row.id} className="border-b border-line last:border-0">
                     <td className="px-4 py-3 font-medium text-ink">
@@ -85,10 +89,21 @@ export default async function AdminLecturers() {
                     </td>
                     <td className="px-4 py-3 text-muted">{row.email}</td>
                     <td className="px-4 py-3">
-                      <span className="inline-flex items-center rounded-full border border-line px-2.5 py-1 text-xs font-medium text-muted">
+                      <span
+                        className={
+                          status === "edit_requested"
+                            ? "inline-flex items-center rounded-full bg-niqat-soft px-2.5 py-1 text-xs font-semibold text-niqat-hover"
+                            : "inline-flex items-center rounded-full border border-line px-2.5 py-1 text-xs font-medium text-muted"
+                        }
+                      >
                         {status ? STATUS_LABEL[status] : "—"}
                       </span>
                     </td>
+                    {isAdmin && (
+                      <td className="px-4 py-3 text-right">
+                        {canReopen ? <ReopenButton lecturerId={row.id} /> : null}
+                      </td>
+                    )}
                   </tr>
                 );
               })}

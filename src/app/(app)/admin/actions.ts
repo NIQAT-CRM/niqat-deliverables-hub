@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { getCurrentUser } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { createClient } from "@/lib/supabase/server";
 
 export type ProvisionState = { error: string | null };
 
@@ -43,4 +44,23 @@ export async function provisionLecturerAction(
 
   revalidatePath("/admin");
   redirect("/admin");
+}
+
+export async function reopenProfile(
+  lecturerId: string,
+): Promise<{ error: string | null }> {
+  const me = await getCurrentUser();
+  if (!me || me.role !== "admin") {
+    return { error: "Only admins can reopen profiles." };
+  }
+  const supabase = await createClient();
+  // Admin sets the profile back to draft (approves an edit request / unlocks).
+  // Allowed by RLS (is_admin) and the profile guard (admins bypass).
+  const { error } = await supabase
+    .from("profiles")
+    .update({ status: "draft" })
+    .eq("user_id", lecturerId);
+  if (error) return { error: "Could not reopen the profile." };
+  revalidatePath("/admin");
+  return { error: null };
 }
