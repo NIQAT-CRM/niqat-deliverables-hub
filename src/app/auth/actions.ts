@@ -23,7 +23,7 @@ export async function signInAction(
     return { error: "Incorrect email or password." };
   }
 
-  redirect("/dashboard");
+  redirect("/");
 }
 
 export async function signOutAction() {
