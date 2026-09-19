@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { Button } from "@/components/ui/Button";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { ReopenButton } from "@/components/app/ReopenButton";
+import { EmptyState } from "@/components/ui/EmptyState";
 import type { ProfileStatus } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
@@ -86,9 +87,16 @@ export default async function AdminLecturers() {
       </div>
 
       {rows.length === 0 ? (
-        <div className="rounded-card border border-line bg-card p-10 text-center shadow-card">
-          <p className="text-sm text-muted">No lecturers yet.</p>
-        </div>
+        <EmptyState
+          title="No lecturers yet"
+          description={isAdmin ? "Add your first lecturer to get started." : undefined}
+        >
+          {isAdmin && (
+            <Link href="/admin/lecturers/new">
+              <Button>Add lecturer</Button>
+            </Link>
+          )}
+        </EmptyState>
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {rows.map((r) => {
@@ -102,7 +110,7 @@ export default async function AdminLecturers() {
             return (
               <div
                 key={r.id}
-                className="flex flex-col rounded-card border border-line bg-card p-5 shadow-card transition-colors hover:border-niqat/40"
+                className="flex flex-col rounded-card border border-line bg-card p-5 shadow-card transition-all hover:border-niqat/40 hover:shadow-card-hover hover:-translate-y-0.5"
               >
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex h-14 w-14 items-center justify-center overflow-hidden rounded-full bg-niqat-soft text-base font-bold text-niqat">

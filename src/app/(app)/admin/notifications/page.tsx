@@ -2,6 +2,7 @@ import Link from "next/link";
 import { requireUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { MarkAllReadButton } from "@/components/app/MarkAllReadButton";
+import { EmptyState } from "@/components/ui/EmptyState";
 import {
   notificationLabel,
   notificationHref,
@@ -96,11 +97,10 @@ export default async function NotificationsPage({
       </div>
 
       {rows.length === 0 ? (
-        <div className="rounded-card border border-line bg-card p-10 text-center shadow-card">
-          <p className="text-sm text-muted">
-            {unreadOnly ? "You're all caught up." : "No notifications yet."}
-          </p>
-        </div>
+        <EmptyState
+          title={unreadOnly ? "You're all caught up" : "No notifications yet"}
+          description={unreadOnly ? undefined : "New uploads and edit requests will show up here."}
+        />
       ) : (
         <div className="overflow-hidden rounded-card border border-line bg-card shadow-card">
           <ul>

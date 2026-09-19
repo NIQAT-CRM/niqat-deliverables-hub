@@ -36,7 +36,17 @@ const config: Config = {
         control: "10px",
       },
       boxShadow: {
-        card: "0 1px 2px rgba(0,0,0,0.03)",
+        card: "0 1px 2px rgba(20,20,19,0.04), 0 6px 16px -8px rgba(20,20,19,0.08)",
+        "card-hover": "0 2px 6px rgba(20,20,19,0.06), 0 14px 28px -10px rgba(20,20,19,0.14)",
+      },
+      keyframes: {
+        fadeUp: {
+          "0%": { opacity: "0", transform: "translateY(6px)" },
+          "100%": { opacity: "1", transform: "none" },
+        },
+      },
+      animation: {
+        fadeUp: "fadeUp 0.28s ease both",
       },
     },
   },

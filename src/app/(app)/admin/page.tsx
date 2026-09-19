@@ -7,7 +7,7 @@ export const dynamic = "force-dynamic";
 
 function StatCard({ label, value, href }: { label: string; value: number; href?: string }) {
   const inner = (
-    <div className="rounded-card border border-line bg-card p-5 shadow-card transition-colors hover:border-niqat/40">
+    <div className="rounded-card border border-line bg-card p-5 shadow-card transition-all hover:border-niqat/40 hover:shadow-card-hover hover:-translate-y-0.5">
       <p className="text-3xl font-extrabold text-ink">{value}</p>
       <p className="mt-1 text-sm text-muted">{label}</p>
     </div>
