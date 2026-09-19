@@ -8,9 +8,20 @@ import { ReopenButton } from "@/components/app/ReopenButton";
 import { FileRowActions } from "@/components/app/FileRowActions";
 import { GrantsPanel } from "@/components/app/GrantsPanel";
 import { FeedbackSection } from "@/components/app/FeedbackSection";
+import { CATEGORY_LABEL, CATEGORY_ORDER } from "@/lib/files";
 import type { ProfileStatus } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
+
+type FileRowD = {
+  id: string;
+  name: string;
+  size: number | null;
+  category: string | null;
+  uploaded_at: string;
+  last_downloaded_at: string | null;
+  last_downloaded_by: string | null;
+};
 
 function formatSize(bytes: number | null): string {
   if (bytes === null || bytes === undefined) return "";
@@ -35,7 +46,6 @@ export default async function LecturerDetail({
     .select("id, full_name, email, role")
     .eq("id", id)
     .maybeSingle();
-
   if (!lecturer || lecturer.role !== "lecturer") notFound();
 
   const [{ data: profile }, { data: files }, { data: feedback }, grantsRes, staffRes, auditRes] =
@@ -47,7 +57,7 @@ export default async function LecturerDetail({
         .maybeSingle(),
       supabase
         .from("files")
-        .select("id, name, size, uploaded_at")
+        .select("id, name, size, category, uploaded_at, last_downloaded_at, last_downloaded_by")
         .eq("owner_id", id)
         .order("uploaded_at", { ascending: false }),
       supabase
@@ -69,7 +79,7 @@ export default async function LecturerDetail({
       isAdmin
         ? supabase
             .from("audit_log")
-            .select("action, target_type, created_at")
+            .select("action, created_at")
             .eq("target_id", id)
             .order("created_at", { ascending: false })
             .limit(5)
@@ -81,7 +91,21 @@ export default async function LecturerDetail({
   const links = (profile?.contact_links ?? {}) as Record<string, string>;
   const experience = Array.isArray(profile?.experience) ? (profile!.experience as Record<string, string>[]) : [];
   const certificates = Array.isArray(profile?.certificates) ? (profile!.certificates as Record<string, string>[]) : [];
-  const fileRows = (files ?? []) as { id: string; name: string; size: number | null }[];
+
+  const fileRows = (files ?? []) as FileRowD[];
+  const downloaderIds = Array.from(
+    new Set(fileRows.map((f) => f.last_downloaded_by).filter(Boolean)),
+  ) as string[];
+  const downloaderName: Record<string, string> = {};
+  if (downloaderIds.length > 0) {
+    const { data: us } = await supabase.from("users").select("id, full_name, email").in("id", downloaderIds);
+    for (const u of (us ?? []) as { id: string; full_name: string | null; email: string }[]) {
+      downloaderName[u.id] = u.full_name || u.email;
+    }
+  }
+  const filesByCategory: Record<string, FileRowD[]> = {};
+  for (const f of fileRows) (filesByCategory[f.category || "other"] ||= []).push(f);
+
   const feedbackItems = (feedback ?? []) as { id: string; content: string | null; created_at: string }[];
 
   const grants = ((grantsRes.data ?? []) as Record<string, unknown>[]).map((g) => ({
@@ -95,9 +119,8 @@ export default async function LecturerDetail({
     can_delete: !!g.can_delete,
     can_export: !!g.can_export,
   }));
-  const staff = ((staffRes.data ?? []) as { id: string; full_name: string | null; email: string; role: string }[]);
-  const audit = ((auditRes.data ?? []) as { action: string; target_type: string | null; created_at: string }[]);
-
+  const staff = (staffRes.data ?? []) as { id: string; full_name: string | null; email: string; role: string }[];
+  const audit = (auditRes.data ?? []) as { action: string; created_at: string }[];
   const linkEntries = Object.entries(links).filter(([, v]) => v);
 
   return (
@@ -124,7 +147,6 @@ export default async function LecturerDetail({
 
       <div className="grid gap-6 lg:grid-cols-3">
         <div className="space-y-6 lg:col-span-2">
-          {/* Profile */}
           <div className="space-y-5 rounded-card border border-line bg-card p-6 shadow-card">
             <div>
               <h2 className="text-sm font-semibold text-ink">Bio</h2>
@@ -181,27 +203,46 @@ export default async function LecturerDetail({
             </div>
           </div>
 
-          {/* Files */}
-          <div className="rounded-card border border-line bg-card shadow-card">
-            <div className="border-b border-line px-6 py-4">
-              <h2 className="font-bold text-ink">Files</h2>
-            </div>
+          {/* Files by category */}
+          <div className="space-y-4">
+            <h2 className="font-bold text-ink">Files</h2>
             {fileRows.length === 0 ? (
-              <p className="px-6 py-8 text-center text-sm text-muted">No files.</p>
+              <div className="rounded-card border border-line bg-card p-8 text-center shadow-card">
+                <p className="text-sm text-muted">No files.</p>
+              </div>
             ) : (
-              <table className="w-full text-left text-sm">
-                <tbody>
-                  {fileRows.map((f) => (
-                    <tr key={f.id} className="border-b border-line2 last:border-0">
-                      <td className="px-6 py-3 font-medium text-ink">{f.name}</td>
-                      <td className="px-6 py-3 text-muted">{formatSize(f.size)}</td>
-                      <td className="px-6 py-3">
-                        <FileRowActions fileId={f.id} />
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+              CATEGORY_ORDER.filter((c) => filesByCategory[c]?.length).map((c) => (
+                <div key={c} className="overflow-hidden rounded-card border border-line bg-card shadow-card">
+                  <div className="border-b border-line px-5 py-3">
+                    <h3 className="text-sm font-semibold text-ink">{CATEGORY_LABEL[c]}</h3>
+                  </div>
+                  <table className="w-full text-left text-sm">
+                    <tbody>
+                      {filesByCategory[c].map((f) => (
+                        <tr key={f.id} className="border-b border-line2 last:border-0 align-top">
+                          <td className="px-5 py-3">
+                            <p className="font-medium text-ink">{f.name}</p>
+                            <p className="text-xs text-faint">
+                              Uploaded {new Date(f.uploaded_at).toLocaleDateString()} · {formatSize(f.size)}
+                            </p>
+                            {f.last_downloaded_at && (
+                              <p className="text-xs text-st-locked-fg">
+                                Downloaded {new Date(f.last_downloaded_at).toLocaleDateString()}
+                                {f.last_downloaded_by && downloaderName[f.last_downloaded_by]
+                                  ? ` by ${downloaderName[f.last_downloaded_by]}`
+                                  : ""}
+                              </p>
+                            )}
+                          </td>
+                          <td className="px-5 py-3 text-right">
+                            <FileRowActions fileId={f.id} />
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              ))
             )}
           </div>
 
@@ -210,7 +251,6 @@ export default async function LecturerDetail({
 
         <div className="space-y-6">
           {isAdmin && <GrantsPanel lecturerId={id} staff={staff} grants={grants} />}
-
           {isAdmin && (
             <div className="rounded-card border border-line bg-card p-6 shadow-card">
               <h2 className="font-bold text-ink">Recent audit</h2>
@@ -221,9 +261,7 @@ export default async function LecturerDetail({
                   {audit.map((a, i) => (
                     <li key={i} className="flex items-center justify-between gap-3">
                       <span className="text-ink">{a.action}</span>
-                      <span className="text-xs text-faint">
-                        {new Date(a.created_at).toLocaleDateString()}
-                      </span>
+                      <span className="text-xs text-faint">{new Date(a.created_at).toLocaleDateString()}</span>
                     </li>
                   ))}
                 </ul>

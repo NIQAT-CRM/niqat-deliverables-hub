@@ -2,23 +2,31 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { notifyAdmins } from "@/lib/notify";
+import { FILE_CATEGORIES } from "@/lib/files";
 
 const BUCKET = "lecturer-files";
 
 export type FileActionState = { error: string | null };
+
+const VALID = new Set<string>(FILE_CATEGORIES.map((c) => c.value));
 
 export async function recordFile(input: {
   path: string;
   name: string;
   type: string;
   size: number;
+  category: string;
+  groupId?: string | null;
 }): Promise<FileActionState> {
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) return { error: "You're signed out. Please sign in again." };
+
+  const category = VALID.has(input.category) ? input.category : "other";
 
   const { error } = await supabase.from("files").insert({
     owner_id: user.id,
@@ -27,6 +35,8 @@ export async function recordFile(input: {
     type: input.type || null,
     size: Number.isFinite(input.size) ? input.size : null,
     uploaded_by: user.id,
+    category,
+    group_id: input.groupId || null,
   });
 
   if (error) return { error: "Could not save the file record." };
@@ -39,9 +49,13 @@ export async function createDownloadUrl(
   fileId: string,
 ): Promise<{ url: string | null; error: string | null }> {
   const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
   const { data: row } = await supabase
     .from("files")
-    .select("path, name")
+    .select("path, name, owner_id")
     .eq("id", fileId)
     .maybeSingle();
   if (!row) return { url: null, error: "File not found." };
@@ -50,6 +64,20 @@ export async function createDownloadUrl(
     .from(BUCKET)
     .createSignedUrl(row.path, 60, { download: row.name });
   if (error || !data) return { url: null, error: "Could not create a download link." };
+
+  // Record who downloaded it last (only when a non-owner, e.g. staff, downloads).
+  if (user && user.id !== row.owner_id) {
+    try {
+      const admin = createAdminClient();
+      await admin
+        .from("files")
+        .update({ last_downloaded_at: new Date().toISOString(), last_downloaded_by: user.id })
+        .eq("id", fileId);
+    } catch {
+      /* tracking is non-critical */
+    }
+  }
+
   return { url: data.signedUrl, error: null };
 }
 
@@ -60,7 +88,6 @@ export async function deleteFile(fileId: string): Promise<FileActionState> {
   } = await supabase.auth.getUser();
   if (!user) return { error: "You're signed out. Please sign in again." };
 
-  // Fetch the row first (RLS ensures the caller is allowed to see it).
   const { data: row } = await supabase
     .from("files")
     .select("id, path")
@@ -68,11 +95,9 @@ export async function deleteFile(fileId: string): Promise<FileActionState> {
     .maybeSingle();
   if (!row) return { error: "File not found." };
 
-  // Remove the Storage object FIRST so we never leave an undeleted file behind.
   const { error: storageErr } = await supabase.storage.from(BUCKET).remove([row.path]);
   if (storageErr) return { error: "Could not delete the file. Please try again." };
 
-  // Then remove the database record (same logical operation).
   const { error: rowErr } = await supabase.from("files").delete().eq("id", row.id);
   if (rowErr) return { error: "The file was removed but its record could not be cleared." };
 
