@@ -49,9 +49,14 @@ export default async function AdminLecturers() {
           </p>
         </div>
         {isAdmin && (
-          <Link href="/admin/lecturers/new">
-            <Button>Add lecturer</Button>
-          </Link>
+          <div className="flex items-center gap-2">
+            <Link href="/admin/lecturers/import">
+              <Button variant="secondary">Import CSV</Button>
+            </Link>
+            <Link href="/admin/lecturers/new">
+              <Button>Add lecturer</Button>
+            </Link>
+          </div>
         )}
       </div>
 

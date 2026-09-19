@@ -4,6 +4,10 @@ import { ProfileForm } from "@/components/app/ProfileForm";
 import { RequestEditButton } from "@/components/app/RequestEditButton";
 import { FileUploader } from "@/components/app/FileUploader";
 import { FileRowActions } from "@/components/app/FileRowActions";
+import type {
+  ExperienceEntry,
+  CertificateEntry,
+} from "@/app/(app)/me/actions";
 import type { ProfileStatus } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
@@ -28,12 +32,35 @@ function formatSize(bytes: number | null): string {
   return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
 }
 
+function asExperience(v: unknown): ExperienceEntry[] {
+  if (!Array.isArray(v)) return [];
+  return v.map((e) => ({
+    title: String((e as Record<string, unknown>)?.title ?? ""),
+    organization: String((e as Record<string, unknown>)?.organization ?? ""),
+    period: String((e as Record<string, unknown>)?.period ?? ""),
+    description: String((e as Record<string, unknown>)?.description ?? ""),
+  }));
+}
+
+function asCertificates(v: unknown): CertificateEntry[] {
+  if (!Array.isArray(v)) return [];
+  return v.map((c) => ({
+    name: String((c as Record<string, unknown>)?.name ?? ""),
+    issuer: String((c as Record<string, unknown>)?.issuer ?? ""),
+    year: String((c as Record<string, unknown>)?.year ?? ""),
+  }));
+}
+
 function ProfileReadOnly({
   bio,
   links,
+  experience,
+  certificates,
 }: {
   bio: string;
   links: Record<string, string>;
+  experience: ExperienceEntry[];
+  certificates: CertificateEntry[];
 }) {
   const entries = Object.entries(links).filter(([, v]) => v);
   return (
@@ -42,6 +69,7 @@ function ProfileReadOnly({
         <h2 className="text-sm font-semibold text-ink">Bio</h2>
         <p className="mt-1 whitespace-pre-wrap text-sm text-muted">{bio || "—"}</p>
       </div>
+
       <div>
         <h2 className="text-sm font-semibold text-ink">Contact links</h2>
         {entries.length === 0 ? (
@@ -51,6 +79,47 @@ function ProfileReadOnly({
             {entries.map(([key, value]) => (
               <li key={key} className="text-muted">
                 <span className="capitalize text-ink">{key}:</span> {value}
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+
+      <div>
+        <h2 className="text-sm font-semibold text-ink">Experience</h2>
+        {experience.length === 0 ? (
+          <p className="mt-1 text-sm text-muted">—</p>
+        ) : (
+          <ul className="mt-2 space-y-3">
+            {experience.map((e, i) => (
+              <li key={i} className="text-sm">
+                <p className="font-medium text-ink">
+                  {e.title || "—"}
+                  {e.organization ? ` · ${e.organization}` : ""}
+                </p>
+                {e.period && <p className="text-muted">{e.period}</p>}
+                {e.description && (
+                  <p className="mt-0.5 whitespace-pre-wrap text-muted">
+                    {e.description}
+                  </p>
+                )}
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+
+      <div>
+        <h2 className="text-sm font-semibold text-ink">Certificates</h2>
+        {certificates.length === 0 ? (
+          <p className="mt-1 text-sm text-muted">—</p>
+        ) : (
+          <ul className="mt-2 space-y-1 text-sm">
+            {certificates.map((c, i) => (
+              <li key={i} className="text-muted">
+                <span className="text-ink">{c.name || "—"}</span>
+                {c.issuer ? ` · ${c.issuer}` : ""}
+                {c.year ? ` (${c.year})` : ""}
               </li>
             ))}
           </ul>
@@ -67,7 +136,7 @@ export default async function MePage() {
   const [{ data: profile }, { data: files }] = await Promise.all([
     supabase
       .from("profiles")
-      .select("bio, contact_links, status")
+      .select("bio, contact_links, experience, certificates, status")
       .eq("user_id", me.id)
       .maybeSingle(),
     supabase
@@ -80,6 +149,8 @@ export default async function MePage() {
   const status = (profile?.status ?? "draft") as ProfileStatus;
   const bio = (profile?.bio ?? "") as string;
   const links = (profile?.contact_links ?? {}) as Record<string, string>;
+  const experience = asExperience(profile?.experience);
+  const certificates = asCertificates(profile?.certificates);
   const fileRows = (files ?? []) as FileRow[];
 
   return (
@@ -97,7 +168,12 @@ export default async function MePage() {
       </div>
 
       {status === "draft" ? (
-        <ProfileForm initialBio={bio} initialLinks={links} />
+        <ProfileForm
+          initialBio={bio}
+          initialLinks={links}
+          initialExperience={experience}
+          initialCertificates={certificates}
+        />
       ) : (
         <div className="space-y-4">
           {status === "locked" && (
@@ -115,7 +191,12 @@ export default async function MePage() {
               </p>
             </div>
           )}
-          <ProfileReadOnly bio={bio} links={links} />
+          <ProfileReadOnly
+            bio={bio}
+            links={links}
+            experience={experience}
+            certificates={certificates}
+          />
         </div>
       )}
 

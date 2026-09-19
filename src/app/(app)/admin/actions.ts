@@ -64,3 +64,69 @@ export async function reopenProfile(
   revalidatePath("/admin");
   return { error: null };
 }
+
+export type ImportRow = { full_name: string; email: string; password: string };
+export type ImportResult = {
+  created: number;
+  failures: { email: string; reason: string }[];
+  error: string | null;
+};
+
+export async function importLecturers(rows: ImportRow[]): Promise<ImportResult> {
+  const me = await getCurrentUser();
+  if (!me || me.role !== "admin") {
+    return { created: 0, failures: [], error: "Only admins can import lecturers." };
+  }
+  if (!Array.isArray(rows) || rows.length === 0) {
+    return { created: 0, failures: [], error: "No rows found in the file." };
+  }
+  if (rows.length > 500) {
+    return { created: 0, failures: [], error: "Please import 500 rows or fewer at a time." };
+  }
+
+  const admin = createAdminClient();
+  let created = 0;
+  const failures: { email: string; reason: string }[] = [];
+
+  for (const raw of rows) {
+    const full_name = (raw.full_name || "").trim();
+    const email = (raw.email || "").trim().toLowerCase();
+    const password = (raw.password || "").trim();
+
+    if (!email) {
+      failures.push({ email: "(blank)", reason: "Missing email" });
+      continue;
+    }
+    if (!full_name) {
+      failures.push({ email, reason: "Missing name" });
+      continue;
+    }
+    if (password.length < 8) {
+      failures.push({ email, reason: "Password must be at least 8 characters" });
+      continue;
+    }
+
+    const { error } = await admin.auth.admin.createUser({
+      email,
+      password,
+      email_confirm: true,
+      user_metadata: { full_name, role: "lecturer" },
+    });
+
+    if (error) {
+      const msg = error.message.toLowerCase();
+      failures.push({
+        email,
+        reason:
+          msg.includes("already") || msg.includes("registered")
+            ? "Already exists"
+            : error.message,
+      });
+      continue;
+    }
+    created += 1;
+  }
+
+  revalidatePath("/admin");
+  return { created, failures, error: null };
+}
