@@ -63,13 +63,13 @@ export async function addFeedback(input: {
   content: string;
 }): Promise<ActionState> {
   const me = await getCurrentUser();
-  if (!me || (me.role !== "admin" && me.role !== "management")) {
-    return { error: "Only admins and management can add feedback." };
-  }
+  if (!me) return { error: "You're signed out." };
   const content = input.content.trim();
   if (!content) return { error: "Write some feedback first." };
 
   const supabase = await createClient();
+  const { data: allowed } = await supabase.rpc("has_team_capability", { p_cap: "manage_feedback" });
+  if (!allowed) return { error: "You don't have permission to manage feedback." };
   const { error } = await supabase.from("feedback").insert({
     lecturer_id: input.lecturerId,
     kind: "text",
@@ -87,10 +87,10 @@ export async function deleteFeedback(
   lecturerId: string,
 ): Promise<ActionState> {
   const me = await getCurrentUser();
-  if (!me || (me.role !== "admin" && me.role !== "management")) {
-    return { error: "Not authorized." };
-  }
+  if (!me) return { error: "Not authorized." };
   const supabase = await createClient();
+  const { data: allowed } = await supabase.rpc("has_team_capability", { p_cap: "manage_feedback" });
+  if (!allowed) return { error: "Not authorized." };
   const { error } = await supabase.from("feedback").delete().eq("id", feedbackId);
   if (error) return { error: "Could not delete the feedback." };
   revalidatePath(`/admin/lecturers/${lecturerId}`);
