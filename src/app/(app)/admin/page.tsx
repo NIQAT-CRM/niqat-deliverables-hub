@@ -1,24 +1,9 @@
 import Link from "next/link";
 import { requireUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
+import { notificationLabel, notificationHref, timeAgo } from "@/lib/notifications";
 
 export const dynamic = "force-dynamic";
-
-const EVENT_LABEL: Record<string, string> = {
-  file_uploaded: "New file uploaded",
-  edit_requested: "Profile edit requested",
-  profile_reopened: "Profile reopened",
-};
-
-function timeAgo(iso: string): string {
-  const diff = Date.now() - new Date(iso).getTime();
-  const m = Math.floor(diff / 60000);
-  if (m < 1) return "just now";
-  if (m < 60) return `${m}m ago`;
-  const h = Math.floor(m / 60);
-  if (h < 24) return `${h}h ago`;
-  return `${Math.floor(h / 24)}d ago`;
-}
 
 function StatCard({ label, value, href }: { label: string; value: number; href?: string }) {
   const inner = (
@@ -55,6 +40,18 @@ export default async function AdminDashboard() {
     created_at: string;
   }[];
 
+  const refIds = Array.from(new Set(activity.map((a) => a.ref_id).filter(Boolean))) as string[];
+  const nameById: Record<string, string> = {};
+  if (refIds.length > 0) {
+    const { data: users } = await supabase
+      .from("users")
+      .select("id, full_name, email")
+      .in("id", refIds);
+    for (const u of (users ?? []) as { id: string; full_name: string | null; email: string }[]) {
+      nameById[u.id] = u.full_name || u.email;
+    }
+  }
+
   return (
     <div className="space-y-8">
       <div>
@@ -80,18 +77,30 @@ export default async function AdminDashboard() {
           <p className="px-5 py-8 text-center text-sm text-muted">No activity yet.</p>
         ) : (
           <ul>
-            {activity.map((a) => (
-              <li
-                key={a.id}
-                className="flex items-center justify-between gap-4 border-b border-line2 px-5 py-3 last:border-0"
-              >
-                <span className="flex items-center gap-2 text-sm text-ink">
-                  {!a.read && <span className="h-2 w-2 rounded-full bg-niqat" />}
-                  {EVENT_LABEL[a.event_type] ?? a.event_type}
-                </span>
-                <span className="text-xs text-faint">{timeAgo(a.created_at)}</span>
-              </li>
-            ))}
+            {activity.map((a) => {
+              const name = (a.ref_id && nameById[a.ref_id]) || "A lecturer";
+              const href = notificationHref(a.event_type, a.ref_id);
+              const row = (
+                <div className="flex items-center justify-between gap-4 px-5 py-3">
+                  <span className="flex items-center gap-2 text-sm text-ink">
+                    {!a.read && <span className="h-2 w-2 rounded-full bg-niqat" />}
+                    {notificationLabel(a.event_type, name)}
+                  </span>
+                  <span className="shrink-0 text-xs text-faint">{timeAgo(a.created_at)}</span>
+                </div>
+              );
+              return (
+                <li key={a.id} className="border-b border-line2 last:border-0">
+                  {href ? (
+                    <Link href={href} className="block hover:bg-ground/50">
+                      {row}
+                    </Link>
+                  ) : (
+                    row
+                  )}
+                </li>
+              );
+            })}
           </ul>
         )}
       </div>
