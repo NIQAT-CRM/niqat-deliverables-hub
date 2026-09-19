@@ -12,7 +12,7 @@ export default function LoginPage() {
   const [state, formAction, pending] = useActionState(signInAction, initial);
 
   return (
-    <main className="flex min-h-screen items-center justify-center bg-surface px-4">
+    <main className="flex min-h-screen items-center justify-center bg-ground px-4">
       <div className="w-full max-w-sm">
         <div className="mb-8 flex justify-center">
           <Image

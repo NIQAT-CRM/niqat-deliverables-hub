@@ -121,7 +121,7 @@ export function ImportLecturers() {
           Three columns with a header row: <code>full_name</code>, <code>email</code>,{" "}
           <code>password</code>. Each password must be at least 8 characters.
         </p>
-        <pre className="mt-3 overflow-x-auto rounded-card bg-surface p-3 text-xs text-muted">
+        <pre className="mt-3 overflow-x-auto rounded-card bg-line2 p-3 text-xs text-muted">
 {`full_name,email,password
 Jane Doe,jane@niqat.com,TempPass123
 Omar Ali,omar@niqat.com,TempPass456`}

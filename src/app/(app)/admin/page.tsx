@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { Button } from "@/components/ui/Button";
 import { ReopenButton } from "@/components/app/ReopenButton";
 import type { ProfileStatus } from "@/lib/types";
+import { StatusBadge } from "@/components/ui/StatusBadge";
 
 export const dynamic = "force-dynamic";
 
@@ -13,12 +14,6 @@ type LecturerRow = {
   email: string;
   created_at: string;
   profiles: { status: ProfileStatus }[] | { status: ProfileStatus } | null;
-};
-
-const STATUS_LABEL: Record<ProfileStatus, string> = {
-  draft: "Draft",
-  locked: "Locked",
-  edit_requested: "Edit requested",
 };
 
 function statusOf(row: LecturerRow): ProfileStatus | null {
@@ -94,15 +89,7 @@ export default async function AdminLecturers() {
                     </td>
                     <td className="px-4 py-3 text-muted">{row.email}</td>
                     <td className="px-4 py-3">
-                      <span
-                        className={
-                          status === "edit_requested"
-                            ? "inline-flex items-center rounded-full bg-niqat-soft px-2.5 py-1 text-xs font-semibold text-niqat-hover"
-                            : "inline-flex items-center rounded-full border border-line px-2.5 py-1 text-xs font-medium text-muted"
-                        }
-                      >
-                        {status ? STATUS_LABEL[status] : "—"}
-                      </span>
+                      <StatusBadge status={status} />
                     </td>
                     {isAdmin && (
                       <td className="px-4 py-3 text-right">

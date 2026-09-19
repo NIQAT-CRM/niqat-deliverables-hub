@@ -5,26 +5,38 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        // Niqat brand — orange is the single accent
         niqat: {
           DEFAULT: "#FF6600",
           hover: "#E65C00",
-          soft: "#FFF3EA",
-          ring: "#FFB380",
+          soft: "#FFF1E8",
+          tint: "rgba(255,102,0,0.16)",
         },
-        ink: "#000000",
-        muted: "#6B6B6B",
-        line: "#E7E5E4",
-        surface: "#FAFAF9",
+        ground: "#F5F4F1",
+        card: "#FFFFFF",
+        ink: "#1A1A18",
+        muted: "#6E6E68",
+        faint: "#9A9A93",
+        line: "#E6E4DF",
+        line2: "#F1F0EC",
+        field: "#FBFBF9",
+        sidebar: "#141413",
+        // status badge palette
+        "st-draft-bg": "#F1F0EC",
+        "st-draft-fg": "#6E6E68",
+        "st-locked-bg": "#EAF6EE",
+        "st-locked-fg": "#177245",
+        "st-edit-bg": "#FFF1E8",
+        "st-edit-fg": "#FF6600",
       },
       fontFamily: {
         sans: ["'Manrope Variable'", "system-ui", "sans-serif"],
       },
       borderRadius: {
-        card: "10px",
+        card: "14px",
+        control: "10px",
       },
       boxShadow: {
-        card: "0 1px 2px rgba(0,0,0,0.04), 0 1px 3px rgba(0,0,0,0.06)",
+        card: "0 1px 2px rgba(0,0,0,0.03)",
       },
     },
   },

@@ -9,14 +9,9 @@ import type {
   CertificateEntry,
 } from "@/app/(app)/me/actions";
 import type { ProfileStatus } from "@/lib/types";
+import { StatusBadge } from "@/components/ui/StatusBadge";
 
 export const dynamic = "force-dynamic";
-
-const STATUS_LABEL: Record<ProfileStatus, string> = {
-  draft: "Draft",
-  locked: "Locked",
-  edit_requested: "Edit requested",
-};
 
 type FileRow = {
   id: string;
@@ -162,9 +157,7 @@ export default async function MePage() {
             Signed in as {me.fullName || me.email}
           </p>
         </div>
-        <span className="inline-flex items-center rounded-full bg-niqat-soft px-2.5 py-1 text-xs font-semibold text-niqat-hover">
-          {STATUS_LABEL[status]}
-        </span>
+        <StatusBadge status={status} />
       </div>
 
       {status === "draft" ? (
@@ -185,7 +178,7 @@ export default async function MePage() {
             </div>
           )}
           {status === "edit_requested" && (
-            <div className="rounded-card border border-niqat-ring bg-niqat-soft p-4">
+            <div className="rounded-card border border-niqat/40 bg-niqat-soft p-4">
               <p className="text-sm text-niqat-hover">
                 Edit requested — waiting for an admin to reopen your profile.
               </p>

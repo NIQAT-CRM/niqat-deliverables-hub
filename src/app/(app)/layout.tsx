@@ -1,5 +1,5 @@
 import { requireUser } from "@/lib/auth";
-import { AppHeader } from "@/components/app/AppHeader";
+import { Sidebar } from "@/components/app/Sidebar";
 
 export const dynamic = "force-dynamic";
 
@@ -10,9 +10,11 @@ export default async function AppLayout({
 }) {
   const user = await requireUser();
   return (
-    <div className="min-h-screen bg-surface">
-      <AppHeader user={user} />
-      <main className="mx-auto max-w-5xl px-4 py-8">{children}</main>
+    <div className="min-h-screen bg-ground">
+      <Sidebar user={user} />
+      <div className="pl-60">
+        <main className="mx-auto max-w-5xl px-8 py-10">{children}</main>
+      </div>
     </div>
   );
 }
