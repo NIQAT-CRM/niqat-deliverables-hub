@@ -10,6 +10,7 @@ import { FeedbackSection } from "@/components/app/FeedbackSection";
 import { RatingEditor } from "@/components/app/RatingEditor";
 import { RatingStars } from "@/components/ui/RatingStars";
 import { FileGallery, type GalleryFile } from "@/components/app/FileGallery";
+import { DeleteInstructorButton } from "@/components/app/DeleteInstructorButton";
 import type { ProfileStatus } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
@@ -216,6 +217,16 @@ export default async function LecturerDetail({
                   <li key={i} className="flex items-center justify-between gap-3"><span className="text-ink">{a.action}</span><span className="text-xs text-faint">{new Date(a.created_at).toLocaleDateString()}</span></li>
                 ))}</ul>
               )}
+            </div>
+          )}
+
+          {isAdmin && (
+            <div className="rounded-card border border-red-200 bg-red-50/60 p-6">
+              <h2 className="font-bold text-ink">Danger zone</h2>
+              <p className="mt-1 text-sm text-muted">Permanently remove this instructor and all their data.</p>
+              <div className="mt-3">
+                <DeleteInstructorButton lecturerId={id} name={lecturer.full_name || lecturer.email} />
+              </div>
             </div>
           )}
         </div>
