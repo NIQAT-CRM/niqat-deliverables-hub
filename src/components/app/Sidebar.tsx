@@ -59,7 +59,7 @@ export function Sidebar({
   const nav: NavItem[] = staff
     ? [
         { href: "/admin", label: "Dashboard", icon: "dashboard" },
-        { href: "/admin/lecturers", label: "Lecturers", icon: "users" },
+        { href: "/admin/lecturers", label: "Instructors", icon: "users" },
         { href: "/admin/groups", label: "Groups", icon: "groups" },
         { href: "/admin/feedback", label: "Feedback", icon: "feedback" },
         { href: "/admin/notifications", label: "Notifications", icon: "bell", badge: unread },
