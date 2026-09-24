@@ -6,6 +6,10 @@ export function notificationLabel(event: string, name: string): string {
       return `${name} requested a profile edit`;
     case "profile_reopened":
       return "Your profile was reopened for editing";
+    case "file_deletion_requested":
+      return `${name} requested a file deletion`;
+    case "feedback_added":
+      return "New feedback was added to your profile";
     default:
       return event.replace(/_/g, " ");
   }
@@ -16,8 +20,10 @@ export function notificationHref(event: string, refId: string | null): string | 
   switch (event) {
     case "file_uploaded":
     case "edit_requested":
+    case "file_deletion_requested":
       return `/admin/lecturers/${refId}`;
     case "profile_reopened":
+    case "feedback_added":
       return "/me";
     default:
       return null;

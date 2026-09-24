@@ -150,41 +150,36 @@ export async function setRating(input: {
 }
 
 
-export async function deleteInstructor(lecturerId: string): Promise<ActionState> {
+
+export async function archiveInstructor(lecturerId: string): Promise<ActionState> {
   const me = await getCurrentUser();
-  if (!me || me.role !== "admin") return { error: "Only admins can delete instructors." };
-
-  const supabase = await createClient();
-  const { data: u } = await supabase.from("users").select("role").eq("id", lecturerId).maybeSingle();
-  if (!u || u.role !== "lecturer") return { error: "Instructor not found." };
-
-  const admin = createAdminClient();
-
-  // collect storage paths (files + avatar in lecturer-files, feedback files in feedback bucket)
-  const [{ data: fileRows }, { data: prof }, { data: fb }] = await Promise.all([
-    supabase.from("files").select("path").eq("owner_id", lecturerId),
-    supabase.from("profiles").select("avatar_url").eq("user_id", lecturerId).maybeSingle(),
-    supabase.from("feedback").select("file_path").eq("lecturer_id", lecturerId).not("file_path", "is", null),
-  ]);
-  const lfPaths = [
-    ...((fileRows ?? []) as { path: string }[]).map((f) => f.path),
-    ...(prof?.avatar_url ? [prof.avatar_url as string] : []),
-  ];
-  const fbPaths = ((fb ?? []) as { file_path: string | null }[])
-    .map((x) => x.file_path)
-    .filter((x): x is string => !!x);
-
-  try {
-    if (lfPaths.length) await admin.storage.from("lecturer-files").remove(lfPaths);
-    if (fbPaths.length) await admin.storage.from("feedback").remove(fbPaths);
-    // delete DB row (cascades profiles/files/feedback/grants/lecturer_programs/notifications/team_members)
-    await admin.from("users").delete().eq("id", lecturerId);
-    // delete the auth account
-    await admin.auth.admin.deleteUser(lecturerId);
-  } catch {
-    return { error: "Could not fully delete the instructor. Please try again." };
+  if (!me || (me.role !== "admin" && me.role !== "management")) {
+    return { error: "Only admins and management can archive instructors." };
   }
-
+  const supabase = await createClient();
+  // Archive only — NO data is deleted. RLS allows admin/management to update the row.
+  const { error } = await supabase
+    .from("users")
+    .update({ archived_at: new Date().toISOString(), archived_by: me.id })
+    .eq("id", lecturerId);
+  if (error) return { error: "Could not archive the instructor." };
   revalidatePath("/admin/lecturers");
+  revalidatePath(`/admin/lecturers/${lecturerId}`);
+  return { error: null };
+}
+
+export async function restoreInstructor(lecturerId: string): Promise<ActionState> {
+  const me = await getCurrentUser();
+  if (!me || (me.role !== "admin" && me.role !== "management")) {
+    return { error: "Only admins and management can restore instructors." };
+  }
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("users")
+    .update({ archived_at: null, archived_by: null })
+    .eq("id", lecturerId);
+  if (error) return { error: "Could not restore the instructor." };
+  revalidatePath("/admin/lecturers");
+  revalidatePath(`/admin/lecturers/${lecturerId}`);
   return { error: null };
 }

@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/Button";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { RatingStars } from "@/components/ui/RatingStars";
 import { ReopenButton } from "@/components/app/ReopenButton";
+import { ArchiveButton, RestoreButton } from "@/components/app/ArchiveButtons";
 import { EmptyState } from "@/components/ui/EmptyState";
 import type { ProfileStatus } from "@/lib/types";
 
@@ -15,6 +16,7 @@ type Row = {
   id: string;
   full_name: string | null;
   email: string;
+  archived_at: string | null;
   profiles: ProfileEmbed[] | ProfileEmbed | null;
 };
 
@@ -27,7 +29,9 @@ function initials(name: string) {
   return name.split(" ").map((p) => p[0]).filter(Boolean).slice(0, 2).join("").toUpperCase();
 }
 
-export default async function AdminLecturers() {
+export default async function AdminLecturers({ searchParams }: { searchParams: Promise<{ view?: string }> }) {
+  const { view } = await searchParams;
+  const showArchived = view === "archived";
   const me = await requireUser();
   const isAdmin = me.role === "admin";
   const supabase = await createClient();
@@ -35,14 +39,15 @@ export default async function AdminLecturers() {
   const [{ data }, { data: lp }, { data: fileOwners }] = await Promise.all([
     supabase
       .from("users")
-      .select("id, full_name, email, profiles(status, avatar_url, rating)")
+      .select("id, full_name, email, archived_at, profiles(status, avatar_url, rating)")
       .eq("role", "lecturer")
       .order("created_at", { ascending: false }),
     supabase.from("lecturer_programs").select("lecturer_id, program:program_id(name)"),
     supabase.from("files").select("owner_id"),
   ]);
 
-  const rows = (data ?? []) as unknown as Row[];
+  const allRows = (data ?? []) as unknown as Row[];
+  const rows = allRows.filter((r) => (showArchived ? r.archived_at : !r.archived_at));
 
   const programsByLecturer: Record<string, string[]> = {};
   for (const r of (lp ?? []) as Record<string, unknown>[]) {
@@ -76,7 +81,7 @@ export default async function AdminLecturers() {
             {rows.length} {rows.length === 1 ? "instructor" : "instructors"}
           </p>
         </div>
-        {isAdmin && (
+        {isAdmin && !showArchived && (
           <div className="flex items-center gap-2">
             <Link href="/admin/lecturers/import">
               <Button variant="secondary">Import CSV</Button>
@@ -86,6 +91,11 @@ export default async function AdminLecturers() {
             </Link>
           </div>
         )}
+      </div>
+
+      <div className="flex items-center gap-1">
+        <Link href="/admin/lecturers" className={`rounded-control px-3 py-1.5 text-sm font-medium ${!showArchived ? "bg-niqat-soft text-niqat" : "text-muted hover:text-ink"}`}>Active</Link>
+        <Link href="/admin/lecturers?view=archived" className={`rounded-control px-3 py-1.5 text-sm font-medium ${showArchived ? "bg-niqat-soft text-niqat" : "text-muted hover:text-ink"}`}>Archived</Link>
       </div>
 
       {rows.length === 0 ? (
@@ -150,10 +160,17 @@ export default async function AdminLecturers() {
                   )}
                 </div>
 
+                {r.archived_at && (
+                  <p className="mt-2 text-xs font-medium text-faint">No longer active</p>
+                )}
                 <div className="mt-4 flex items-center justify-between border-t border-line2 pt-3">
                   <span className="text-xs text-muted">{files} {files === 1 ? "file" : "files"}</span>
                   <div className="flex items-center gap-3">
-                    {canReopen && <ReopenButton lecturerId={r.id} />}
+                    {r.archived_at ? (
+                      isAdmin && <RestoreButton lecturerId={r.id} />
+                    ) : (
+                      canReopen && <ReopenButton lecturerId={r.id} />
+                    )}
                     <Link href={`/admin/lecturers/${r.id}`} className="text-sm font-semibold text-niqat hover:text-niqat-hover">
                       View profile
                     </Link>

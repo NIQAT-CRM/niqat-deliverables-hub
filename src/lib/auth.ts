@@ -18,9 +18,12 @@ export async function getCurrentUser(): Promise<CurrentUser | null> {
 
   const { data } = await supabase
     .from("users")
-    .select("full_name, email, role")
+    .select("full_name, email, role, archived_at")
     .eq("id", user.id)
     .single();
+
+  // Archived accounts are locked out entirely.
+  if (data?.archived_at) return null;
 
   return {
     id: user.id,

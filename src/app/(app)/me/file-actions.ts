@@ -109,3 +109,17 @@ export async function deleteFile(fileId: string): Promise<FileActionState> {
   revalidatePath("/me");
   return { error: null };
 }
+
+
+export async function requestFileDeletion(fileId: string): Promise<FileActionState> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { error: "You're signed out. Please sign in again." };
+  const { data: row } = await supabase.from("files").select("id, owner_id").eq("id", fileId).maybeSingle();
+  if (!row || row.owner_id !== user.id) return { error: "File not found." };
+  // Append-only: we don't delete — we notify admins to review.
+  await notifyAdmins("file_deletion_requested", user.id);
+  return { error: null };
+}

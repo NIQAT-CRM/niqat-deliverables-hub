@@ -23,6 +23,16 @@ export async function signInAction(
     return { error: "Incorrect email or password." };
   }
 
+  // Block archived accounts.
+  const { data: { user } } = await supabase.auth.getUser();
+  if (user) {
+    const { data: row } = await supabase.from("users").select("archived_at").eq("id", user.id).maybeSingle();
+    if (row?.archived_at) {
+      await supabase.auth.signOut();
+      return { error: "This account is no longer active. Contact an admin." };
+    }
+  }
+
   redirect("/");
 }
 
