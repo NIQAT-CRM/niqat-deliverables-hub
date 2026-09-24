@@ -5,11 +5,12 @@ import { Button } from "@/components/ui/Button";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { ReopenButton } from "@/components/app/ReopenButton";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { RatingStars } from "@/components/ui/RatingStars";
 import type { ProfileStatus } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
 
-type ProfileEmbed = { status: ProfileStatus; avatar_url: string | null };
+type ProfileEmbed = { status: ProfileStatus; avatar_url: string | null; rating: number | null };
 type Row = {
   id: string;
   full_name: string | null;
@@ -35,7 +36,7 @@ export default async function AdminLecturers() {
   const [{ data }, { data: lp }] = await Promise.all([
     supabase
       .from("users")
-      .select("id, full_name, email, profiles(status, avatar_url)")
+      .select("id, full_name, email, profiles(status, avatar_url, rating)")
       .eq("role", "lecturer")
       .order("created_at", { ascending: false }),
     supabase.from("lecturer_programs").select("lecturer_id, program:program_id(name)"),
@@ -132,6 +133,9 @@ export default async function AdminLecturers() {
                     {name}
                   </Link>
                   <p className="truncate text-sm text-muted">{r.email}</p>
+                  <div className="mt-1.5">
+                    <RatingStars value={p?.rating ?? 0} />
+                  </div>
                 </div>
 
                 <div className="mt-3 min-h-[36px]">

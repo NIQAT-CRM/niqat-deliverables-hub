@@ -8,6 +8,8 @@ import { ReopenButton } from "@/components/app/ReopenButton";
 import { FileRowActions } from "@/components/app/FileRowActions";
 import { GrantsPanel } from "@/components/app/GrantsPanel";
 import { FeedbackSection } from "@/components/app/FeedbackSection";
+import { RatingEditor } from "@/components/app/RatingEditor";
+import { RatingStars } from "@/components/ui/RatingStars";
 import { CATEGORY_LABEL, CATEGORY_ORDER } from "@/lib/files";
 import type { ProfileStatus } from "@/lib/types";
 
@@ -52,7 +54,7 @@ export default async function LecturerDetail({
     await Promise.all([
       supabase
         .from("profiles")
-        .select("bio, contact_links, experience, certificates, status")
+        .select("bio, contact_links, experience, certificates, status, rating, rating_note")
         .eq("user_id", id)
         .maybeSingle(),
       supabase
@@ -87,6 +89,8 @@ export default async function LecturerDetail({
     ]);
 
   const status = (profile?.status ?? "draft") as ProfileStatus;
+  const rating = (profile?.rating ?? 0) as number;
+  const ratingNote = (profile?.rating_note ?? "") as string;
   const bio = (profile?.bio ?? "") as string;
   const links = (profile?.contact_links ?? {}) as Record<string, string>;
   const experience = Array.isArray(profile?.experience) ? (profile!.experience as Record<string, string>[]) : [];
@@ -250,6 +254,15 @@ export default async function LecturerDetail({
         </div>
 
         <div className="space-y-6">
+          {canManage ? (
+            <RatingEditor lecturerId={id} initialRating={rating} initialNote={ratingNote} />
+          ) : (
+            <div className="space-y-2 rounded-card border border-line bg-card p-6 shadow-card">
+              <h2 className="font-bold text-ink">Rating</h2>
+              <RatingStars value={rating} size={20} />
+              {ratingNote && <p className="text-sm text-muted">{ratingNote}</p>}
+            </div>
+          )}
           {isAdmin && <GrantsPanel lecturerId={id} staff={staff} grants={grants} />}
           {isAdmin && (
             <div className="rounded-card border border-line bg-card p-6 shadow-card">

@@ -6,6 +6,7 @@ import { FileUploader } from "@/components/app/FileUploader";
 import { FileRowActions } from "@/components/app/FileRowActions";
 import { AvatarUploader } from "@/components/app/AvatarUploader";
 import { StatusBadge } from "@/components/ui/StatusBadge";
+import { RatingStars } from "@/components/ui/RatingStars";
 import { CATEGORY_LABEL, CATEGORY_ORDER } from "@/lib/files";
 import type { ExperienceEntry, CertificateEntry } from "@/app/(app)/me/actions";
 import type { ProfileStatus } from "@/lib/types";
@@ -123,7 +124,7 @@ export default async function MePage() {
   const [{ data: profile }, { data: files }, { data: feedback }] = await Promise.all([
     supabase
       .from("profiles")
-      .select("bio, contact_links, experience, certificates, status, avatar_url")
+      .select("bio, contact_links, experience, certificates, status, avatar_url, rating, rating_note")
       .eq("user_id", me.id)
       .maybeSingle(),
     supabase
@@ -140,6 +141,8 @@ export default async function MePage() {
   ]);
 
   const status = (profile?.status ?? "draft") as ProfileStatus;
+  const rating = (profile?.rating ?? 0) as number;
+  const ratingNote = (profile?.rating_note ?? "") as string;
   const bio = (profile?.bio ?? "") as string;
   const links = (profile?.contact_links ?? {}) as Record<string, string>;
   const experience = asExperience(profile?.experience);
@@ -196,6 +199,16 @@ export default async function MePage() {
           </div>
         </div>
         <StatusBadge status={status} />
+      </div>
+
+      <div className="flex flex-wrap items-center justify-between gap-3 rounded-card border border-line bg-card p-5 shadow-card">
+        <div>
+          <p className="text-sm font-semibold text-ink">Your rating</p>
+          <p className="mt-0.5 text-sm text-muted">
+            {ratingNote || (rating > 0 ? "Rated by the team." : "Not rated yet.")}
+          </p>
+        </div>
+        <RatingStars value={rating} size={22} />
       </div>
 
       {status === "draft" ? (

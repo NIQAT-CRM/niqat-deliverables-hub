@@ -96,3 +96,25 @@ export async function deleteFeedback(
   revalidatePath(`/admin/lecturers/${lecturerId}`);
   return { error: null };
 }
+
+export async function setRating(input: {
+  lecturerId: string;
+  rating: number;
+  note: string;
+}): Promise<ActionState> {
+  const me = await getCurrentUser();
+  if (!me || (me.role !== "admin" && me.role !== "management")) {
+    return { error: "Only admins and management can rate lecturers." };
+  }
+  const rating = Math.max(0, Math.min(3, Math.round(input.rating || 0)));
+  const supabase = await createClient();
+  // Only rating fields are sent — the profile guard permits management to change these only.
+  const { error } = await supabase
+    .from("profiles")
+    .update({ rating, rating_note: input.note.trim() || null })
+    .eq("user_id", input.lecturerId);
+  if (error) return { error: "Could not save the rating." };
+  revalidatePath(`/admin/lecturers/${input.lecturerId}`);
+  revalidatePath("/admin/lecturers");
+  return { error: null };
+}
