@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/Button";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { InstructorGrid, type InstructorCard } from "@/components/app/InstructorGrid";
 import { profileCompletion } from "@/lib/completion";
+import { resolveAvatar } from "@/lib/avatar";
 import type { ProfileStatus } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
@@ -46,10 +47,8 @@ export default async function AdminLecturers({ searchParams }: { searchParams: P
 
   const avatarById: Record<string, string> = {};
   await Promise.all(rows.map(async (r) => {
-    const path = embed(r)?.avatar_url;
-    if (!path) return;
-    const { data: s } = await supabase.storage.from("lecturer-files").createSignedUrl(path, 3600);
-    if (s?.signedUrl) avatarById[r.id] = s.signedUrl;
+    const resolved = await resolveAvatar(supabase, embed(r)?.avatar_url ?? null);
+    if (resolved) avatarById[r.id] = resolved;
   }));
 
   const cards: InstructorCard[] = rows.map((r) => {

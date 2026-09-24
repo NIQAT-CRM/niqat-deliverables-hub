@@ -45,25 +45,34 @@ export function InstructorGrid({ cards, programs, isAdmin, showArchived }: { car
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
         {cards.map((c) => (
-          <div key={c.id} className={`relative flex flex-col rounded-card border bg-card p-5 shadow-card transition-all hover:border-niqat/40 hover:shadow-card-hover hover:-translate-y-0.5 ${sel.has(c.id) ? "border-niqat" : "border-line"}`}>
-            {canBulk && <label className="absolute left-3 top-3 z-10 flex h-6 w-6 items-center justify-center rounded-md bg-white/90 shadow-card"><input type="checkbox" checked={sel.has(c.id)} onChange={() => toggle(c.id)} className="h-4 w-4 accent-niqat" /></label>}
-            <div className="flex items-start justify-between gap-3">
-              <div className="flex h-16 w-16 items-center justify-center overflow-hidden rounded-full bg-niqat-soft text-lg font-bold text-niqat ring-2 ring-white">
-                {c.avatar ? (/* eslint-disable-next-line @next/next/no-img-element */ <img src={c.avatar} alt="" className="h-full w-full object-cover" />) : initials(c.name)}
-              </div>
-              <StatusBadge status={c.archived ? "archived" : c.status} />
+          <div key={c.id} className={`group relative flex flex-col rounded-card border bg-card p-6 text-center shadow-card transition-all hover:border-niqat/40 hover:shadow-card-hover hover:-translate-y-1 ${sel.has(c.id) ? "border-niqat" : "border-line"}`}>
+            {canBulk && (
+              <label className="absolute left-3 top-3 z-10 flex h-6 w-6 items-center justify-center rounded-md bg-white/90 shadow-card">
+                <input type="checkbox" checked={sel.has(c.id)} onChange={() => toggle(c.id)} className="h-4 w-4 accent-niqat" />
+              </label>
+            )}
+            <div className="absolute right-3 top-3"><StatusBadge status={c.archived ? "archived" : c.status} /></div>
+
+            <div className="mx-auto flex h-20 w-20 items-center justify-center overflow-hidden rounded-full bg-niqat-soft text-xl font-bold text-niqat ring-4 ring-niqat-soft/60">
+              {c.avatar ? (/* eslint-disable-next-line @next/next/no-img-element */ <img src={c.avatar} alt="" className="h-full w-full object-cover" />) : initials(c.name)}
             </div>
+
             <div className="mt-3">
-              <Link href={`/admin/lecturers/${c.id}`} className="text-base font-bold text-ink hover:text-niqat">{c.name}</Link>
-              <p className="truncate text-sm text-muted">{c.email}</p>
-              <div className="mt-1.5"><RatingStars value={c.rating} /></div>
+              <Link href={`/admin/lecturers/${c.id}`} className="text-base font-extrabold text-ink hover:text-niqat">{c.name}</Link>
+              <p className="truncate text-xs text-muted">{c.email}</p>
+              <div className="mt-1.5 flex justify-center"><RatingStars value={c.rating} /></div>
             </div>
-            <div className="mt-3 min-h-[26px]">
-              {c.teaching.length > 0 ? <div className="flex flex-wrap gap-1.5">{c.teaching.map((t, i) => <span key={i} className="rounded-full bg-niqat-soft px-2 py-0.5 text-xs font-medium text-niqat">{t}</span>)}</div> : <span className="text-xs text-faint">Not assigned to a program</span>}
+
+            <div className="mt-3 flex min-h-[24px] flex-wrap justify-center gap-1.5">
+              {c.teaching.length > 0
+                ? c.teaching.map((t, i) => <span key={i} className="rounded-full bg-niqat-soft px-2 py-0.5 text-[11px] font-medium text-niqat">{t}</span>)
+                : <span className="text-xs text-faint">Not assigned to a program</span>}
             </div>
-            <CompletionBar percent={c.completion} className="mt-3" />
+
+            <CompletionBar percent={c.completion} className="mt-4 text-left" />
             {c.archived && <p className="mt-2 text-xs font-medium text-faint">No longer active</p>}
-            <div className="mt-4 flex items-center justify-between border-t border-line2 pt-3">
+
+            <div className="mt-4 flex items-center justify-between border-t border-line2 pt-3 text-left">
               <span className="text-xs text-muted">{c.files} {c.files === 1 ? "file" : "files"}</span>
               <div className="flex items-center gap-3">
                 {c.archived ? (isAdmin && <RestoreButton lecturerId={c.id} />) : ((c.status === "locked" || c.status === "edit_requested") && isAdmin && <ReopenButton lecturerId={c.id} />)}

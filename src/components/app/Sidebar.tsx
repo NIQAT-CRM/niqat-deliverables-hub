@@ -74,7 +74,7 @@ export function Sidebar({
           ? [
               { href: "/admin/downloads", label: "Downloads", icon: "report" as const },
               { href: "/admin/deletion-requests", label: "Requests", icon: "inbox" as const },
-              { href: "/admin/settings", label: "Settings", icon: "settings" as const },
+              { href: "/admin/settings", label: "Teams", icon: "settings" as const },
             ]
           : []),
       ]

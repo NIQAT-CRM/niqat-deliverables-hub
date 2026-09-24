@@ -116,13 +116,13 @@ export function AssetGrid({
               </button>
             )}
             {it.isImage && it.previewUrl ? (
-              <button type="button" onClick={() => setPreview({ url: it.previewUrl!, name: it.title || it.name, pdf: false })} className="block h-28 w-full bg-line2">{/* eslint-disable-next-line @next/next/no-img-element */}<img src={it.previewUrl} alt="" className="h-full w-full object-cover" /></button>
+              <button type="button" onClick={() => setPreview({ url: it.previewUrl!, name: it.title || it.name, pdf: false })} className="block h-40 w-full bg-line2">{/* eslint-disable-next-line @next/next/no-img-element */}<img src={it.previewUrl} alt="" className="h-full w-full object-cover" /></button>
             ) : it.isPdf && it.previewUrl ? (
-              <button type="button" onClick={() => setPreview({ url: it.previewUrl!, name: it.title || it.name, pdf: true })} className="flex h-28 w-full items-center justify-center bg-line2 text-niqat"><span className="text-sm font-bold">PDF</span></button>
+              <button type="button" onClick={() => setPreview({ url: it.previewUrl!, name: it.title || it.name, pdf: true })} className="flex h-40 w-full items-center justify-center bg-line2 text-niqat"><span className="text-sm font-bold">PDF</span></button>
             ) : it.source === "link" ? (
-              <div className="flex h-28 w-full items-center justify-center bg-line2 text-faint">{LinkIcon}</div>
+              <div className="flex h-40 w-full items-center justify-center bg-line2 text-faint">{LinkIcon}</div>
             ) : (
-              <div className="flex h-28 w-full items-center justify-center bg-line2 text-faint">{FileIcon}</div>
+              <div className="flex h-40 w-full items-center justify-center bg-line2 text-faint">{FileIcon}</div>
             )}
             <div className="flex flex-1 flex-col p-3">
               <p className="truncate text-sm font-medium text-ink" title={it.title || it.name}>{it.title || it.name}</p>

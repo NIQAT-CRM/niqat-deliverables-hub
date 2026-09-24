@@ -8,6 +8,8 @@ import { AssetGrid } from "@/components/app/AssetGrid";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { RatingStars } from "@/components/ui/RatingStars";
 import { CompletionBar } from "@/components/ui/CompletionBar";
+import { Tabs } from "@/components/ui/Tabs";
+import { resolveAvatar } from "@/lib/avatar";
 import { profileCompletion } from "@/lib/completion";
 import { toAssetItems, type FileRowLike } from "@/lib/asset-view";
 import type { ExperienceEntry, CertificateEntry } from "@/app/(app)/me/actions";
@@ -99,16 +101,22 @@ export default async function MePage() {
         </div>
       )}
 
-      <section className="space-y-4">
-        <h2 className="text-lg font-bold text-ink">My assets</h2>
-        <AssetUploader userId={me.id} programs={myPrograms} />
-        <AssetGrid items={myAssets} requestDelete />
-      </section>
-
-      <section className="space-y-4">
-        <div><h2 className="text-lg font-bold text-ink">My feedback</h2><p className="mt-1 text-sm text-muted">Feedback shared with you by the team.</p></div>
-        <AssetGrid items={myFeedback} />
-      </section>
+      <Tabs
+        tabs={[
+          { label: "My Data", content: (
+            <div className="space-y-4">
+              <AssetUploader userId={me.id} programs={myPrograms} />
+              <AssetGrid items={myAssets} requestDelete />
+            </div>
+          ) },
+          { label: "Trainees' Feedback", badge: myFeedback.length, content: (
+            <div className="space-y-2">
+              <p className="text-sm text-muted">Feedback shared with you by the team.</p>
+              <AssetGrid items={myFeedback} />
+            </div>
+          ) },
+        ]}
+      />
     </div>
   );
 }

@@ -115,8 +115,6 @@ export async function setAvatar(path: string): Promise<SaveState> {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) return { ok: false, error: "You're signed out. Please sign in again." };
-  // avatar path must be under the user's own folder
-  if (!path.startsWith(`${user.id}/`)) return { ok: false, error: "Invalid path." };
 
   const { error } = await supabase
     .from("profiles")

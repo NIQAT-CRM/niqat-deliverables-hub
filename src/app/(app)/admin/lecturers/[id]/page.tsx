@@ -10,6 +10,7 @@ import { RatingEditor } from "@/components/app/RatingEditor";
 import { RatingStars } from "@/components/ui/RatingStars";
 import { AssetGrid } from "@/components/app/AssetGrid";
 import { LecturerAssetUploader } from "@/components/app/LecturerAssetUploader";
+import { Tabs } from "@/components/ui/Tabs";
 import { ArchiveButton, RestoreButton } from "@/components/app/ArchiveButtons";
 import { toAssetItems, type FileRowLike } from "@/lib/asset-view";
 import { CompletionBar } from "@/components/ui/CompletionBar";
@@ -56,6 +57,8 @@ export default async function LecturerDetail({ params }: { params: Promise<{ id:
     for (const u of (us ?? []) as { id: string; full_name: string | null; email: string }[]) downloaderNames[u.id] = u.full_name || u.email;
   }
   const items = await toAssetItems(supabase, rows, { programNames, downloaderNames });
+  const dataItems = items.filter((i) => i.asset_kind !== "feedback_proof");
+  const feedbackItems = items.filter((i) => i.asset_kind === "feedback_proof");
 
   const grants = ((grantsRes.data ?? []) as Record<string, unknown>[]).map((g) => ({ id: g.id as string, user_id: g.user_id as string, email: (Array.isArray(g.users) ? (g.users[0] as { email?: string })?.email : (g.users as { email?: string })?.email) ?? "—", can_view: !!g.can_view, can_download: !!g.can_download, can_delete: !!g.can_delete, can_export: !!g.can_export }));
   const staff = (staffRes.data ?? []) as { id: string; full_name: string | null; email: string; role: string }[];
@@ -92,9 +95,13 @@ export default async function LecturerDetail({ params }: { params: Promise<{ id:
           </div>
 
           <div className="space-y-4">
-            <h2 className="font-bold text-ink">Assets &amp; feedback</h2>
             {canManage && <LecturerAssetUploader lecturerId={id} programs={(progs ?? []) as { id: string; name: string }[]} />}
-            <AssetGrid items={items} canDelete={isAdmin} />
+            <Tabs
+              tabs={[
+                { label: "Data", badge: dataItems.length, content: <AssetGrid items={dataItems} canDelete={isAdmin} canShare={canManage} canFeature={canManage} /> },
+                { label: "Feedback", badge: feedbackItems.length, content: <AssetGrid items={feedbackItems} canDelete={isAdmin} canShare={canManage} /> },
+              ]}
+            />
           </div>
         </div>
 
