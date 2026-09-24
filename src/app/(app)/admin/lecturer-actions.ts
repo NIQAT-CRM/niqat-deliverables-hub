@@ -82,6 +82,31 @@ export async function addFeedback(input: {
   return { error: null };
 }
 
+export async function addFeedbackFile(input: {
+  lecturerId: string;
+  path: string;
+  name: string;
+  type: string;
+}): Promise<ActionState> {
+  const me = await getCurrentUser();
+  if (!me) return { error: "You're signed out." };
+  const supabase = await createClient();
+  const { data: allowed } = await supabase.rpc("has_team_capability", { p_cap: "manage_feedback" });
+  if (!allowed) return { error: "You don't have permission to manage feedback." };
+  const kind = input.type.startsWith("image/") ? "image" : "file";
+  const { error } = await supabase.from("feedback").insert({
+    lecturer_id: input.lecturerId,
+    kind,
+    content: input.name,
+    file_path: input.path,
+    is_master: false,
+    created_by: me.id,
+  });
+  if (error) return { error: "Could not save the file feedback." };
+  revalidatePath(`/admin/lecturers/${input.lecturerId}`);
+  return { error: null };
+}
+
 export async function deleteFeedback(
   feedbackId: string,
   lecturerId: string,
@@ -91,6 +116,10 @@ export async function deleteFeedback(
   const supabase = await createClient();
   const { data: allowed } = await supabase.rpc("has_team_capability", { p_cap: "manage_feedback" });
   if (!allowed) return { error: "Not authorized." };
+  const { data: row } = await supabase.from("feedback").select("file_path").eq("id", feedbackId).maybeSingle();
+  if (row?.file_path) {
+    await supabase.storage.from("feedback").remove([row.file_path]);
+  }
   const { error } = await supabase.from("feedback").delete().eq("id", feedbackId);
   if (error) return { error: "Could not delete the feedback." };
   revalidatePath(`/admin/lecturers/${lecturerId}`);

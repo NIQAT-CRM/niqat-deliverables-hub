@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { ProfileForm } from "@/components/app/ProfileForm";
 import { RequestEditButton } from "@/components/app/RequestEditButton";
 import { FileUploader } from "@/components/app/FileUploader";
+import { FeedbackSection } from "@/components/app/FeedbackSection";
 import { FileGallery, type GalleryFile } from "@/components/app/FileGallery";
 import { AvatarUploader } from "@/components/app/AvatarUploader";
 import { StatusBadge } from "@/components/ui/StatusBadge";
@@ -74,7 +75,7 @@ export default async function MePage() {
   const [{ data: profile }, { data: files }, { data: feedback }] = await Promise.all([
     supabase.from("profiles").select("bio, contact_links, experience, certificates, status, avatar_url, rating, rating_note").eq("user_id", me.id).maybeSingle(),
     supabase.from("files").select("id, name, size, uploaded_at, category, type, path").eq("owner_id", me.id).order("uploaded_at", { ascending: false }),
-    supabase.from("feedback").select("id, content, created_at").eq("lecturer_id", me.id).eq("is_master", false).order("created_at", { ascending: false }),
+    supabase.from("feedback").select("id, content, kind, file_path, created_at").eq("lecturer_id", me.id).eq("is_master", false).order("created_at", { ascending: false }),
   ]);
 
   const status = (profile?.status ?? "draft") as ProfileStatus;
@@ -114,7 +115,17 @@ export default async function MePage() {
     }),
   );
 
-  const feedbackRows = (feedback ?? []) as { id: string; content: string | null; created_at: string }[];
+  const feedbackRaw = (feedback ?? []) as { id: string; content: string | null; kind: string; file_path: string | null; created_at: string }[];
+  const feedbackItems = await Promise.all(
+    feedbackRaw.map(async (f) => {
+      let fileUrl: string | null = null;
+      if (f.file_path) {
+        const { data: signed } = await supabase.storage.from("feedback").createSignedUrl(f.file_path, 3600);
+        fileUrl = signed?.signedUrl ?? null;
+      }
+      return { id: f.id, content: f.content, kind: f.kind, created_at: f.created_at, fileUrl, isImage: f.kind === "image" };
+    }),
+  );
 
   return (
     <div className="mx-auto max-w-2xl space-y-8">
@@ -161,11 +172,7 @@ export default async function MePage() {
 
       <section className="space-y-4">
         <div><h2 className="text-lg font-bold text-ink">My feedback</h2><p className="mt-1 text-sm text-muted">Feedback shared with you by the team.</p></div>
-        {feedbackRows.length === 0 ? (
-          <div className="rounded-card border border-line bg-card p-8 text-center shadow-card"><p className="text-sm text-muted">No feedback yet.</p></div>
-        ) : (
-          <ul className="space-y-3">{feedbackRows.map((f) => (<li key={f.id} className="rounded-card border border-line bg-card p-5 shadow-card"><p className="whitespace-pre-wrap text-sm text-ink">{f.content}</p><p className="mt-2 text-xs text-faint">{new Date(f.created_at).toLocaleDateString()}</p></li>))}</ul>
-        )}
+        <FeedbackSection lecturerId={me.id} items={feedbackItems} canManage={false} />
       </section>
     </div>
   );

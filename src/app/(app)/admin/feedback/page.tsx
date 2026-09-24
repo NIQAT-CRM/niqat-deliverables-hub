@@ -11,11 +11,21 @@ export default async function FeedbackPage() {
 
   const { data } = await supabase
     .from("feedback")
-    .select("id, content, created_at")
+    .select("id, content, kind, file_path, created_at")
     .eq("is_master", true)
     .order("created_at", { ascending: false });
 
-  const items = (data ?? []) as { id: string; content: string | null; created_at: string }[];
+  const raw = (data ?? []) as { id: string; content: string | null; kind: string; file_path: string | null; created_at: string }[];
+  const items = await Promise.all(
+    raw.map(async (f) => {
+      let fileUrl: string | null = null;
+      if (f.file_path) {
+        const { data: signed } = await supabase.storage.from("feedback").createSignedUrl(f.file_path, 3600);
+        fileUrl = signed?.signedUrl ?? null;
+      }
+      return { id: f.id, content: f.content, kind: f.kind, created_at: f.created_at, fileUrl, isImage: f.kind === "image" };
+    }),
+  );
 
   return (
     <div className="space-y-6">

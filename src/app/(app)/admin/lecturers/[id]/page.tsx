@@ -58,7 +58,7 @@ export default async function LecturerDetail({
         .order("uploaded_at", { ascending: false }),
       supabase
         .from("feedback")
-        .select("id, content, created_at")
+        .select("id, content, kind, file_path, created_at")
         .eq("lecturer_id", id)
         .eq("is_master", false)
         .order("created_at", { ascending: false }),
@@ -121,7 +121,17 @@ export default async function LecturerDetail({
     }),
   );
 
-  const feedbackItems = (feedback ?? []) as { id: string; content: string | null; created_at: string }[];
+  const feedbackRaw = (feedback ?? []) as { id: string; content: string | null; kind: string; file_path: string | null; created_at: string }[];
+  const feedbackItems = await Promise.all(
+    feedbackRaw.map(async (f) => {
+      let fileUrl: string | null = null;
+      if (f.file_path) {
+        const { data: signed } = await supabase.storage.from("feedback").createSignedUrl(f.file_path, 3600);
+        fileUrl = signed?.signedUrl ?? null;
+      }
+      return { id: f.id, content: f.content, kind: f.kind, created_at: f.created_at, fileUrl, isImage: f.kind === "image" };
+    }),
+  );
   const grants = ((grantsRes.data ?? []) as Record<string, unknown>[]).map((g) => ({
     id: g.id as string,
     user_id: g.user_id as string,
