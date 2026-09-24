@@ -65,8 +65,13 @@ export async function createDownloadUrl(
     .createSignedUrl(row.path, 60, { download: row.name });
   if (error || !data) return { url: null, error: "Could not create a download link." };
 
-  // Record who downloaded it last (only when a non-owner, e.g. staff, downloads).
+  // Staff (non-owner) download: write an audit entry via log_download + record last-download.
   if (user && user.id !== row.owner_id) {
+    try {
+      await supabase.rpc("log_download", { p_file_id: fileId });
+    } catch {
+      /* audit logging is non-critical to the download itself */
+    }
     try {
       const admin = createAdminClient();
       await admin
