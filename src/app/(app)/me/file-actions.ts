@@ -119,7 +119,8 @@ export async function requestFileDeletion(fileId: string): Promise<FileActionSta
   if (!user) return { error: "You're signed out. Please sign in again." };
   const { data: row } = await supabase.from("files").select("id, owner_id").eq("id", fileId).maybeSingle();
   if (!row || row.owner_id !== user.id) return { error: "File not found." };
-  // Append-only: we don't delete — we notify admins to review.
+  // Append-only: record a request for admin review — no deletion happens here.
+  await supabase.from("deletion_requests").insert({ file_id: fileId, requested_by: user.id, status: "pending" });
   await notifyAdmins("file_deletion_requested", user.id);
   return { error: null };
 }

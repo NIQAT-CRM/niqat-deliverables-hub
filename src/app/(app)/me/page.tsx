@@ -7,6 +7,8 @@ import { AssetUploader } from "@/components/app/AssetUploader";
 import { AssetGrid } from "@/components/app/AssetGrid";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { RatingStars } from "@/components/ui/RatingStars";
+import { CompletionBar } from "@/components/ui/CompletionBar";
+import { profileCompletion } from "@/lib/completion";
 import { toAssetItems, type FileRowLike } from "@/lib/asset-view";
 import type { ExperienceEntry, CertificateEntry } from "@/app/(app)/me/actions";
 import type { ProfileStatus } from "@/lib/types";
@@ -40,7 +42,7 @@ export default async function MePage() {
 
   const [{ data: profile }, { data: files }, { data: lp }, { data: progs }] = await Promise.all([
     supabase.from("profiles").select("bio, contact_links, experience, certificates, status, avatar_url, rating, rating_note").eq("user_id", me.id).maybeSingle(),
-    supabase.from("files").select("id, name, title, asset_kind, source, link_url, type, path, program_id, uploaded_at").eq("owner_id", me.id).order("uploaded_at", { ascending: false }),
+    supabase.from("files").select("id, name, title, asset_kind, source, link_url, type, path, program_id, uploaded_at, size").eq("owner_id", me.id).order("uploaded_at", { ascending: false }),
     supabase.from("lecturer_programs").select("program_id").eq("lecturer_id", me.id),
     supabase.from("programs").select("id, name"),
   ]);
@@ -62,6 +64,7 @@ export default async function MePage() {
   for (const p of (progs ?? []) as { id: string; name: string }[]) programNames[p.id] = p.name;
   const myProgramIds = new Set(((lp ?? []) as { program_id: string }[]).map((r) => r.program_id));
   const myPrograms = ((progs ?? []) as { id: string; name: string }[]).filter((p) => myProgramIds.has(p.id));
+  const completion = profileCompletion({ bio, contact_links: links, experience, certificates, avatar_url: avatarPath }, myProgramIds.size > 0);
 
   const rows = (files ?? []) as FileRowLike[];
   const items = await toAssetItems(supabase, rows, { programNames });
@@ -78,9 +81,12 @@ export default async function MePage() {
         <StatusBadge status={status} />
       </div>
 
-      <div className="flex flex-wrap items-center justify-between gap-3 rounded-card border border-line bg-card p-5 shadow-card">
-        <div><p className="text-sm font-semibold text-ink">Your rating</p><p className="mt-0.5 text-sm text-muted">{ratingNote || (rating > 0 ? "Rated by the team." : "Not rated yet.")}</p></div>
-        <RatingStars value={rating} size={22} />
+      <div className="rounded-card border border-line bg-card p-5 shadow-card">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div><p className="text-sm font-semibold text-ink">Your rating</p><p className="mt-0.5 text-sm text-muted">{ratingNote || (rating > 0 ? "Rated by the team." : "Not rated yet.")}</p></div>
+          <RatingStars value={rating} size={22} />
+        </div>
+        <CompletionBar percent={completion} className="mt-4" />
       </div>
 
       {status === "draft" ? (

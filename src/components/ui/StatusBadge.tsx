@@ -1,12 +1,15 @@
 import type { ProfileStatus } from "@/lib/types";
 
-const MAP: Record<ProfileStatus, { label: string; cls: string }> = {
+type BadgeStatus = ProfileStatus | "archived";
+
+const MAP: Record<BadgeStatus, { label: string; cls: string }> = {
   draft: { label: "Draft", cls: "bg-st-draft-bg text-st-draft-fg" },
   locked: { label: "Locked", cls: "bg-st-locked-bg text-st-locked-fg" },
   edit_requested: { label: "Edit requested", cls: "bg-st-edit-bg text-st-edit-fg" },
+  archived: { label: "Archived", cls: "bg-line2 text-faint" },
 };
 
-export function StatusBadge({ status }: { status: ProfileStatus | null }) {
+export function StatusBadge({ status }: { status: BadgeStatus | null }) {
   if (!status) {
     return (
       <span className="inline-flex items-center rounded-full bg-line2 px-2.5 py-1 text-xs font-semibold text-faint">

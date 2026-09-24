@@ -12,6 +12,8 @@ import { AssetGrid } from "@/components/app/AssetGrid";
 import { LecturerAssetUploader } from "@/components/app/LecturerAssetUploader";
 import { ArchiveButton, RestoreButton } from "@/components/app/ArchiveButtons";
 import { toAssetItems, type FileRowLike } from "@/lib/asset-view";
+import { CompletionBar } from "@/components/ui/CompletionBar";
+import { profileCompletion } from "@/lib/completion";
 import type { ProfileStatus } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
@@ -28,7 +30,7 @@ export default async function LecturerDetail({ params }: { params: Promise<{ id:
 
   const [{ data: profile }, { data: files }, { data: progs }, grantsRes, staffRes, auditRes] = await Promise.all([
     supabase.from("profiles").select("bio, contact_links, experience, certificates, status, rating, rating_note").eq("user_id", id).maybeSingle(),
-    supabase.from("files").select("id, name, title, asset_kind, source, link_url, type, path, program_id, uploaded_at, last_downloaded_at, last_downloaded_by").eq("owner_id", id).order("uploaded_at", { ascending: false }),
+    supabase.from("files").select("id, name, title, asset_kind, source, link_url, type, path, program_id, uploaded_at, last_downloaded_at, last_downloaded_by, size").eq("owner_id", id).order("uploaded_at", { ascending: false }),
     supabase.from("programs").select("id, name"),
     isAdmin ? supabase.from("grants").select("id, user_id, can_view, can_download, can_delete, can_export, users:user_id(email)").eq("scope_type", "lecturer").eq("scope_id", id) : Promise.resolve({ data: [] as unknown[] }),
     isAdmin ? supabase.from("users").select("id, full_name, email, role").in("role", ["management", "marketing"]) : Promise.resolve({ data: [] as unknown[] }),
@@ -58,6 +60,8 @@ export default async function LecturerDetail({ params }: { params: Promise<{ id:
   const grants = ((grantsRes.data ?? []) as Record<string, unknown>[]).map((g) => ({ id: g.id as string, user_id: g.user_id as string, email: (Array.isArray(g.users) ? (g.users[0] as { email?: string })?.email : (g.users as { email?: string })?.email) ?? "—", can_view: !!g.can_view, can_download: !!g.can_download, can_delete: !!g.can_delete, can_export: !!g.can_export }));
   const staff = (staffRes.data ?? []) as { id: string; full_name: string | null; email: string; role: string }[];
   const audit = (auditRes.data ?? []) as { action: string; created_at: string }[];
+  const { count: lpCount } = await supabase.from("lecturer_programs").select("program_id", { count: "exact", head: true }).eq("lecturer_id", id);
+  const completion = profileCompletion({ bio, contact_links: links, experience, certificates, avatar_url: null }, (lpCount ?? 0) > 0);
   const linkEntries = Object.entries(links).filter(([, v]) => v);
 
   return (
@@ -80,6 +84,7 @@ export default async function LecturerDetail({ params }: { params: Promise<{ id:
       <div className="grid gap-6 lg:grid-cols-3">
         <div className="space-y-6 lg:col-span-2">
           <div className="space-y-5 rounded-card border border-line bg-card p-6 shadow-card">
+            <CompletionBar percent={completion} />
             <div><h2 className="text-sm font-semibold text-ink">Bio</h2><p className="mt-1 whitespace-pre-wrap text-sm text-muted">{bio || "—"}</p></div>
             <div><h2 className="text-sm font-semibold text-ink">Contact</h2>{linkEntries.length === 0 ? <p className="mt-1 text-sm text-muted">—</p> : <ul className="mt-1 space-y-1 text-sm">{linkEntries.map(([k, v]) => <li key={k} className="text-muted"><span className="capitalize text-ink">{k}:</span> {v}</li>)}</ul>}</div>
             <div><h2 className="text-sm font-semibold text-ink">Experience</h2>{experience.length === 0 ? <p className="mt-1 text-sm text-muted">—</p> : <ul className="mt-2 space-y-2 text-sm">{experience.map((e, i) => <li key={i}><p className="font-medium text-ink">{e.title || "—"}{e.organization ? ` · ${e.organization}` : ""}</p>{e.period && <p className="text-muted">{e.period}</p>}{e.description && <p className="text-muted">{e.description}</p>}</li>)}</ul>}</div>

@@ -28,7 +28,7 @@ export default async function DataHub({ searchParams }: { searchParams: Promise<
   const canManage = me.role === "admin" || me.role === "management";
   const supabase = await createClient();
 
-  const cols = "id, name, title, asset_kind, source, link_url, type, path, program_id, owner_id, uploaded_at, last_downloaded_at, last_downloaded_by, featured";
+  const cols = "id, name, title, asset_kind, source, link_url, type, path, program_id, owner_id, uploaded_at, last_downloaded_at, last_downloaded_by, featured, size";
 
   let query = supabase.from("files").select(cols).limit(300);
   if (sp.kind) query = query.eq("asset_kind", sp.kind);

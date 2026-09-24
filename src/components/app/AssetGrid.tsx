@@ -12,6 +12,18 @@ export type { AssetItem };
 
 const FileIcon = (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" className="h-8 w-8"><path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z" /><path d="M13 2v7h7" /></svg>);
 const LinkIcon = (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" className="h-8 w-8"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" /><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" /></svg>);
+function fmtSize(b: number | null): string {
+  if (b === null || b === undefined) return "";
+  if (b < 1024) return `${b} B`;
+  if (b < 1024 * 1024) return `${Math.round(b / 1024)} KB`;
+  return `${(b / 1024 / 1024).toFixed(1)} MB`;
+}
+function TypeIcon({ it }: { it: AssetItem }) {
+  // colored by type: PDF red, image blue, link orange, other grey
+  const color = it.isPdf ? "#D64545" : it.isImage ? "#2F6FEB" : it.source === "link" ? "#FF6600" : "#9A9A93";
+  const label = it.isPdf ? "PDF" : it.isImage ? "IMG" : it.source === "link" ? "LINK" : "FILE";
+  return <span className="rounded px-1.5 py-0.5 text-[10px] font-bold text-white" style={{ background: color }}>{label}</span>;
+}
 function Star({ filled }: { filled: boolean }) {
   return <svg viewBox="0 0 24 24" width={16} height={16} stroke="currentColor" strokeWidth="1.5" className={filled ? "fill-niqat text-niqat" : "fill-none text-faint"}><path d="M12 2l2.9 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l7.1-1.01z" /></svg>;
 }
@@ -114,10 +126,12 @@ export function AssetGrid({
             )}
             <div className="flex flex-1 flex-col p-3">
               <p className="truncate text-sm font-medium text-ink" title={it.title || it.name}>{it.title || it.name}</p>
-              <div className="mt-1 flex flex-wrap gap-1">
+              <div className="mt-1 flex flex-wrap items-center gap-1">
+                <TypeIcon it={it} />
                 <span className="rounded-full bg-niqat-soft px-1.5 py-0.5 text-[10px] font-medium text-niqat">{ASSET_KIND_LABEL[it.asset_kind] ?? it.asset_kind}</span>
                 {it.programName && <span className="rounded-full bg-line2 px-1.5 py-0.5 text-[10px] text-muted">{it.programName}</span>}
               </div>
+              {it.size ? <p className="mt-1 text-[11px] text-faint">{fmtSize(it.size)}</p> : null}
               {showLecturer && it.lecturerName && <p className="mt-1 truncate text-xs text-faint">{it.lecturerName}</p>}
               <p className="mt-1 text-[11px] text-faint">{new Date(it.uploaded_at).toLocaleDateString()}</p>
               {it.downloadedLabel && <p className="text-[11px] text-st-locked-fg">{it.downloadedLabel}</p>}

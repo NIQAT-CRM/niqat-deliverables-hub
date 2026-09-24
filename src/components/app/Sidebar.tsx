@@ -25,6 +25,8 @@ const I = {
   logout: "M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4 M16 17l5-5-5-5 M21 12H9",
   data: "M4 7c0-1.66 3.58-3 8-3s8 1.34 8 3-3.58 3-8 3-8-1.34-8-3z M4 7v5c0 1.66 3.58 3 8 3s8-1.34 8-3V7 M4 12v5c0 1.66 3.58 3 8 3s8-1.34 8-3v-5",
   collections: "M4 4h7v7H4z M13 4h7v7h-7z M4 13h7v7H4z M13 13h7v7h-7z",
+  report: "M3 3v18h18 M7 14l3-3 4 4 5-6",
+  inbox: "M22 12h-6l-2 3h-4l-2-3H2 M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z",
   settings: "M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z",
 };
 
@@ -69,7 +71,11 @@ export function Sidebar({
         { href: "/admin/notifications", label: "Notifications", icon: "bell", badge: unread },
         { href: "/admin/audit", label: "Audit log", icon: "audit" },
         ...(user.role === "admin"
-          ? [{ href: "/admin/settings", label: "Settings", icon: "settings" as const }]
+          ? [
+              { href: "/admin/downloads", label: "Downloads", icon: "report" as const },
+              { href: "/admin/deletion-requests", label: "Requests", icon: "inbox" as const },
+              { href: "/admin/settings", label: "Settings", icon: "settings" as const },
+            ]
           : []),
       ]
     : [{ href: "/me", label: "My Profile", icon: "user" }];
