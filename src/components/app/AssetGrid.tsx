@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { createDownloadUrl, requestFileDeletion } from "@/app/(app)/me/file-actions";
 import { deleteAsset, setFeatured, createShareLink } from "@/app/(app)/admin/asset-actions";
+import { addAssetsToCollection, removeFromCollection } from "@/app/(app)/admin/collections-actions";
 import { ASSET_KIND_LABEL } from "@/lib/assets";
 import { Button } from "@/components/ui/Button";
 import type { AssetItem } from "@/lib/asset-view";
@@ -18,9 +19,11 @@ function Star({ filled }: { filled: boolean }) {
 export function AssetGrid({
   items, canDelete = false, requestDelete = false, showLecturer = false,
   selectable = false, canFeature = false, canShare = false,
+  collections, collectionId,
 }: {
   items: AssetItem[]; canDelete?: boolean; requestDelete?: boolean; showLecturer?: boolean;
   selectable?: boolean; canFeature?: boolean; canShare?: boolean;
+  collections?: { id: string; name: string }[]; collectionId?: string;
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
@@ -29,6 +32,7 @@ export function AssetGrid({
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [zipping, setZipping] = useState(false);
   const [share, setShare] = useState<{ url: string; expires: string | null } | null>(null);
+  const [collId, setCollId] = useState("");
 
   function toggle(id: string) { setSelected((s) => { const n = new Set(s); n.has(id) ? n.delete(id) : n.add(id); return n; }); }
   function selectAll() { setSelected(selected.size === items.length ? new Set() : new Set(items.map((i) => i.id))); }
@@ -55,6 +59,14 @@ export function AssetGrid({
   function remove(id: string) { if (!window.confirm("Delete this asset? This can't be undone.")) return; startTransition(async () => { await deleteAsset(id); router.refresh(); }); }
   function askDelete(id: string) { if (!window.confirm("Request deletion? An admin will review it.")) return; startTransition(async () => { await requestFileDeletion(id); window.alert("Deletion requested."); }); }
   function feature(id: string, v: boolean) { startTransition(async () => { await setFeatured(id, v); router.refresh(); }); }
+  function addToColl() {
+    if (!collId || selected.size === 0) return;
+    startTransition(async () => { await addAssetsToCollection(collId, [...selected]); setSelected(new Set()); window.alert("Added to collection."); });
+  }
+  function removeColl(id: string) {
+    if (!collectionId) return;
+    startTransition(async () => { await removeFromCollection(collectionId, id); router.refresh(); });
+  }
   async function doShare(id: string) { const res = await createShareLink(id, 7); if (res.url) setShare({ url: res.url, expires: res.expires }); else window.alert(res.error || "Could not create link."); }
 
   if (items.length === 0) return <div className="rounded-card border border-dashed border-line bg-card/60 p-10 text-center"><p className="text-sm text-muted">No assets.</p></div>;
@@ -66,6 +78,15 @@ export function AssetGrid({
           <button onClick={selectAll} className="text-sm font-medium text-muted hover:text-ink">{selected.size === items.length ? "Clear all" : "Select all"}</button>
           <span className="text-sm text-faint">{selected.size} selected</span>
           <Button type="button" disabled={selected.size === 0 || zipping} onClick={downloadZip}>{zipping ? "Building ZIP…" : "Download ZIP"}</Button>
+          {collections && collections.length > 0 && (
+            <div className="flex items-center gap-2">
+              <select value={collId} onChange={(e) => setCollId(e.target.value)} className="h-[42px] rounded-control border border-line bg-field px-3 text-sm text-ink focus:border-niqat focus:outline-none">
+                <option value="">Collection…</option>
+                {collections.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+              </select>
+              <Button variant="secondary" type="button" disabled={!collId || selected.size === 0} onClick={addToColl}>Add to collection</Button>
+            </div>
+          )}
         </div>
       )}
 
@@ -105,6 +126,7 @@ export function AssetGrid({
                 {canShare && <button onClick={() => doShare(it.id)} className="text-xs font-medium text-muted hover:text-ink">Share</button>}
                 {canDelete && <button onClick={() => remove(it.id)} disabled={pending} className="text-xs font-medium text-muted hover:text-ink disabled:opacity-50">Delete</button>}
                 {requestDelete && !canDelete && <button onClick={() => askDelete(it.id)} disabled={pending} className="text-xs font-medium text-muted hover:text-ink disabled:opacity-50">Request deletion</button>}
+                {collectionId && <button onClick={() => removeColl(it.id)} disabled={pending} className="text-xs font-medium text-muted hover:text-ink disabled:opacity-50">Remove</button>}
               </div>
             </div>
           </div>

@@ -40,11 +40,12 @@ export default async function DataHub({ searchParams }: { searchParams: Promise<
   else if (sp.sort === "downloaded") query = query.order("last_downloaded_at", { ascending: false, nullsFirst: false });
   else query = query.order("uploaded_at", { ascending: false });
 
-  const [{ data: files }, { data: featured }, { data: progs }, { data: lecturers }] = await Promise.all([
+  const [{ data: files }, { data: featured }, { data: progs }, { data: lecturers }, { data: collections }] = await Promise.all([
     query,
     supabase.from("files").select(cols).eq("featured", true).order("uploaded_at", { ascending: false }).limit(8),
     supabase.from("programs").select("id, name").order("name"),
     supabase.from("users").select("id, full_name, email").eq("role", "lecturer"),
+    supabase.from("collections").select("id, name").order("name"),
   ]);
 
   const programNames: Record<string, string> = {};
@@ -82,7 +83,7 @@ export default async function DataHub({ searchParams }: { searchParams: Promise<
         {(sp.kind || sp.program || sp.q || sp.ftype || sp.from || sp.to || sp.sort) && <Link href="/admin/data" className="text-sm text-muted hover:text-ink">Clear</Link>}
       </form>
 
-      <AssetGrid items={items} canDelete={isAdmin} canFeature={canManage} canShare={canManage} showLecturer selectable />
+      <AssetGrid items={items} canDelete={isAdmin} canFeature={canManage} canShare={canManage} showLecturer selectable collections={(collections ?? []) as { id: string; name: string }[]} />
     </div>
   );
 }
