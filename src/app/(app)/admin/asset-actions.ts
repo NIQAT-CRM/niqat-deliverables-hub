@@ -86,3 +86,41 @@ export async function deleteAsset(fileId: string): Promise<AssetState> {
   revalidatePath(`/admin/lecturers/${row.owner_id}`);
   return { error: null };
 }
+
+export async function setFeatured(fileId: string, value: boolean): Promise<AssetState> {
+  if (!(await staff())) return { error: "Not authorized." };
+  const admin = createAdminClient();
+  const { error } = await admin.from("files").update({ featured: value }).eq("id", fileId);
+  if (error) return { error: "Could not update." };
+  revalidatePath("/admin/data");
+  revalidatePath("/admin");
+  return { error: null };
+}
+
+export async function createShareLink(
+  fileId: string,
+  days = 7,
+): Promise<{ url: string | null; expires: string | null; error: string | null }> {
+  const me = await staff();
+  if (!me) return { url: null, expires: null, error: "Not authorized." };
+  const admin = createAdminClient();
+  const { data: row } = await admin.from("files").select("id, path, source, link_url").eq("id", fileId).maybeSingle();
+  if (!row) return { url: null, expires: null, error: "Not found." };
+
+  const seconds = Math.min(30, Math.max(1, days)) * 86400;
+  let url: string | null = null;
+  if (row.source === "link") {
+    url = row.link_url;
+  } else {
+    const { data, error } = await admin.storage.from("lecturer-files").createSignedUrl(row.path, seconds);
+    if (error || !data) return { url: null, expires: null, error: "Could not create link." };
+    url = data.signedUrl;
+  }
+  // log the share in the audit trail
+  try {
+    await admin.from("audit_log").insert({ actor_id: me.id, action: "share", target_type: "file", target_id: fileId, metadata: { days } });
+  } catch { /* non-critical */ }
+
+  const expires = new Date(Date.now() + seconds * 1000).toLocaleDateString();
+  return { url, expires, error: null };
+}

@@ -14,6 +14,7 @@ export type AssetItem = {
   programName?: string | null;
   lecturerName?: string | null;
   downloadedLabel?: string | null;
+  featured: boolean;
 };
 
 export type FileRowLike = {
@@ -30,6 +31,7 @@ export type FileRowLike = {
   owner_id?: string | null;
   last_downloaded_at?: string | null;
   last_downloaded_by?: string | null;
+  featured?: boolean | null;
 };
 
 export async function toAssetItems(
@@ -72,6 +74,7 @@ export async function toAssetItems(
         programName: f.program_id ? opts.programNames?.[f.program_id] ?? null : null,
         lecturerName: f.owner_id ? opts.lecturerNames?.[f.owner_id] ?? null : null,
         downloadedLabel: dl,
+        featured: !!f.featured,
       };
     }),
   );
